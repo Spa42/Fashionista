@@ -1,0 +1,76 @@
+---
+description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+globs: .cursor/rules/*.mdc
+alwaysApply: true
+---
+
+- **Required Rule Structure:**
+  ```markdown
+  ---
+  description: Clear, one-line description of what the rule enforces
+  globs: path/to/files/*.ext, other/path/**/*
+  alwaysApply: boolean
+  ---
+
+  - **Main Points in Bold**
+    - Sub-points with details
+    - Examples and explanations
+  ```
+
+- **File References:**
+  - Use `[filename](mdc:path/to/file)` ([filename](mdc:filename)) to reference files
+  - Example: [prisma.mdc](mdc:.cursor/rules/prisma.mdc) for rule references
+  - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
+
+- **Code Examples:**
+  - Use language-specific code blocks
+  ```typescript
+  // ✅ DO: Show good examples
+  const goodExample = true;
+  
+  // ❌ DON'T: Show anti-patterns
+  const badExample = false;
+  ```
+
+- **Rule Content Guidelines:**
+  - Start with high-level overview
+  - Include specific, actionable requirements
+  - Show examples of correct implementation
+  - Reference existing code when possible
+  - Keep rules DRY by referencing other rules
+
+- **Rule Maintenance:**
+  - Update rules when new patterns emerge
+  - Add examples from actual codebase
+  - Remove outdated patterns
+  - Cross-reference related rules
+
+- **Best Practices:**
+  - Use bullet points for clarity
+  - Keep descriptions concise
+  - Include both DO and DON'T examples
+  - Reference actual code over theoretical examples
+  - Use consistent formatting across rules
+
+- **Development Log (devlog.txt) Maintenance:**
+  - **Purpose:** Maintain a chronological log (`devlog.txt` at the project root) of significant development activities to provide context for future changes and assist AI understanding.
+  - **Trigger Updates:** Update the `devlog.txt` after:
+    - Creating new files or directories (include path).
+    - Implementing a major feature or core component.
+    - Making significant refactoring changes.
+    - Adding or removing major dependencies.
+    - Resolving complex bugs with noteworthy solutions.
+  - **Log Entry Format:** Use a consistent format for clarity:
+    ```
+    [YYYY-MM-DD HH:MM:SS] - [ACTION TYPE] - [File/Component Path] - Description of the change.
+    Example:
+    [2024-07-27 10:30:00] - CREATE - src/components/Button.tsx - Created a reusable Button component using shadcn/ui.
+    [2024-07-27 11:15:00] - IMPLEMENT - src/app/page.tsx - Implemented the basic homepage layout with a CTA button.
+    [2024-07-27 14:00:00] - REFACTOR - src/utils/api.ts - Refactored API call logic for better error handling.
+    ```
+  - **Content Guidelines:**
+    - Be concise but informative.
+    - Focus on *what* was changed and *where*.
+    - Include *why* if the reason isn't obvious (e.g., performance improvement, fixing specific bug).
+    - Avoid excessive detail; link to relevant code or PRD sections if necessary.
+  - **AI Responsibility:** As the AI assistant, ensure you update `devlog.txt` promptly after performing relevant actions described above. If unsure whether a change warrants logging, err on the side of logging it. 

@@ -1,0 +1,100 @@
+# Overview
+This document outlines the Product Requirements for the "Beauty Salon AI Skin Consultation Chatbot (Demo Version)". This demo application aims to showcase the core functionality of an AI-powered skin consultation platform. It allows users to upload two eyebrow photos and an optional description to receive personalized feedback on beauty-related issues (e.g., acne, dryness, pigmentation) analyzed by OpenAI's GPT-4o vision model. The app will return tailored recommendations and suggest a placeholder beauty salon. The primary goal is to demonstrate a polished, intelligent user experience, deferring deeper integrations like real booking or user data handling for the full version. This demo serves to validate the concept and visual appeal, highlighting the potential of AI in personalized beauty advice.
+
+# Core Features
+1.  **Homepage:**
+    *   Presents a sleek, elegant beauty salon aesthetic.
+    *   Features a prominent Call-to-Action (CTA) button: "Begin Skin Consultation".
+2.  **Upload Page:**
+    *   Allows users to upload exactly two photos (e.g., focused on eyebrows).
+    *   Includes an optional textarea for users to describe their concerns (e.g., "uneven shape," "dry skin," "patchiness").
+    *   Provides a button to submit the photos and text for analysis.
+3.  **LLM Vision Analysis (OpenAI GPT-4o):**
+    *   Backend API route securely sends the two uploaded images and optional text description to the OpenAI GPT-4o API.
+    *   GPT-4o analyzes the visual and textual input together.
+    *   The model identifies potential issues such as acne, inflammation, pigmentation, hair loss/thinning, dryness, or irritation visible in the photos or mentioned in the text.
+    *   Generates conversational, informative, and personalized feedback based on the analysis.
+4.  **Conclusion Page:**
+    *   Displays the AI-generated feedback in a structured, clean, and visually appealing UI.
+    *   Includes dedicated sections for:
+        *   Detected Issue(s)
+        *   Potential Suggested Causes
+        *   Actionable Home Tips & Product Recommendations
+        *   Suggested Beauty Salon (displays a randomly selected placeholder salon for the demo).
+    *   Features a static "Book Consultation" button which, when clicked, shows a modal or tooltip indicating "Coming Soon" or similar placeholder text.
+5.  **Static Demo Flow:**
+    *   All user interactions are handled client-side (Next.js) with a single, basic API route for the OpenAI call.
+    *   No real-time booking integration (e.g., WhatsApp).
+    *   No user authentication, database integration (e.g., Supabase), or persistent user data storage for this demo version.
+    *   The primary focus is on delivering a polished and seamless user experience flow from upload to feedback.
+
+# User Experience
+*   **Target User Persona:** Individuals seeking quick, personalized advice on common beauty concerns (e.g., eyebrow appearance, skin issues) who are comfortable uploading photos.
+*   **Key User Flow:**
+    1.  User lands on the Homepage and clicks "Begin Skin Consultation".
+    2.  User is directed to the Upload Page, uploads two photos, and optionally adds a description.
+    3.  User clicks the proceed/submit button.
+    4.  The application shows a loading/processing state while interacting with the OpenAI API.
+    5.  User is presented with the Conclusion Page displaying structured feedback and recommendations.
+    6.  User clicks the "Book Consultation" button and sees a "Coming Soon" message.
+*   **UI/UX Considerations:**
+    *   Maintain a clean, modern, and elegant aesthetic consistent with a high-end beauty service.
+    *   Ensure the upload process is intuitive and provides clear instructions (e.g., exactly two photos required).
+    *   Feedback presentation must be easily readable, well-organized, and visually appealing.
+    *   The flow should feel smooth and responsive.
+
+# Technical Architecture
+*   **Frontend Framework:** Next.js 14 (using App Router)
+*   **Styling:** Tailwind CSS
+*   **UI Components:** shadcn/ui library
+*   **Image Upload Component:** FilePond or React Dropzone (choose one based on ease of integration and required features for two-file upload)
+*   **Backend API:** Simple Next.js API route to handle communication with the OpenAI API.
+*   **Language:** TypeScript (strict mode enabled)
+*   **LLM Provider:** OpenAI API (specifically GPT-4o model with vision capabilities)
+*   **Infrastructure:** Standard Vercel deployment (or similar) suitable for Next.js applications. No database required for the demo.
+
+# Development Roadmap
+*   **MVP Requirements (Demo Version):**
+    1.  Set up Next.js project with TypeScript, Tailwind, and shadcn/ui.
+    2.  Build the static Homepage UI.
+    3.  Implement the Upload Page UI with a two-photo upload component and optional textarea.
+    4.  Create the Next.js API route to receive image data (likely base64 encoded) and text.
+    5.  Integrate OpenAI API client (official library) within the API route to call GPT-4o with image and text prompts.
+    6.  Develop the structure and styling for the Conclusion Page UI.
+    7.  Implement logic to display the structured feedback received from the API on the Conclusion Page.
+    8.  Add the placeholder "Book Consultation" button functionality (modal/tooltip).
+    9.  Implement basic loading states and error handling for the API call.
+    10. Ensure the UI is polished and responsive.
+*   **Future Enhancements (Post-Demo):**
+    *   Integration with a real booking system (e.g., WhatsApp API, Calendly).
+    *   User authentication and data persistence (e.g., using Supabase or similar).
+    *   Tracking user history (previous uploads, skin progress).
+    *   Integration with actual beauty salon databases/APIs.
+    *   More sophisticated prompt engineering for nuanced feedback.
+    *   Ability to handle more than two photos or different types of beauty consultations.
+
+# Logical Dependency Chain
+1.  **Foundation:** Set up the Next.js project, install core dependencies (Tailwind, shadcn), and configure TypeScript.
+2.  **Static UI:** Build the basic structure and styling for the Homepage, Upload Page, and Conclusion Page.
+3.  **Upload Mechanism:** Implement the file upload component on the Upload Page, ensuring exactly two images can be selected and prepared for sending (e.g., base64 encoding).
+4.  **API Route:** Create the Next.js API route endpoint that accepts image data and text.
+5.  **OpenAI Integration:** Integrate the OpenAI SDK into the API route, configure API keys securely (environment variables), and implement the logic to call the GPT-4o vision model with the correct prompt structure (images + text).
+6.  **Data Flow:** Connect the Upload Page form submission to the API route, handle the asynchronous API call, and pass the response back to the client.
+7.  **Feedback Display:** Implement the logic on the Conclusion Page to parse the OpenAI response and display it in the predefined structured sections.
+8.  **Final Touches:** Add loading indicators, error handling (e.g., for API failures), the static "Book Consultation" button behavior, and perform final UI polishing.
+
+# Risks and Mitigations
+*   **Risk:** Achieving a highly polished UI within demo constraints.
+    *   **Mitigation:** Leverage shadcn/ui components effectively, focus on clean layout and typography, prioritize core flow aesthetics over complex animations.
+*   **Risk:** Accuracy and relevance of GPT-4o analysis for beauty consultations.
+    *   **Mitigation:** Craft clear prompts for GPT-4o focusing on visual analysis and common issues. Clearly state in the UI that this is AI-generated advice and not a substitute for professional consultation. It's a demo, so perfection isn't required, but usefulness is.
+*   **Risk:** Handling image uploads and data transfer securely and efficiently.
+    *   **Mitigation:** Use established libraries (FilePond/React Dropzone). Transmit image data securely to the API route (e.g., base64 over HTTPS). Limit image size if necessary on the client-side.
+*   **Risk:** OpenAI API costs, rate limits, or reliability.
+    *   **Mitigation:** Implement basic error handling for API calls. Monitor usage during development. For the demo, usage should be limited. Secure API keys properly using environment variables.
+*   **Risk:** Ensuring the user provides appropriate images (e.g., clear photos of eyebrows).
+    *   **Mitigation:** Provide clear instructions on the Upload Page about the type and quality of photos needed. Handle potential errors if the AI cannot process the images.
+
+# Appendix
+*   **Tech Stack Summary:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, FilePond/React Dropzone, OpenAI GPT-4o API.
+*   **Key Goal:** Demonstrate a sleek, intelligent AI consultation flow focused purely on the front-end experience and AI interaction, without backend complexities like databases or booking systems for this demo version. 
