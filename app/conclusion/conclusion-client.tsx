@@ -4,12 +4,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Stepper, Step } from '@/components/ui/stepper';
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, ArrowRight, Sparkles, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface Solution {
+  service: string;
+  benefit: string;
+}
 
 interface RecommendationSection {
   title: string;
-  description: string;
+  description?: string;
+  solutions?: Solution[];
+  concerns?: string[];
 }
 
 interface RecommendationsPayload {
@@ -44,10 +51,42 @@ const steps: Step[] = [
   }
 ];
 
+// --- Video Mapping --- 
+// Map AI service names (or keywords) to actual video file paths in /public
+const serviceToVideoMap: Record<string, string | null> = {
+  // Exact matches (lowercase) - Add more as needed
+  "chemical peels": "/videos/treatments/chemical-peel.mp4", // Note singular peel in filename
+  "laser skin resurfacing": "/videos/treatments/laser-skin-resurfacing.mp4",
+  "acne treatment program": "/videos/treatments/acne-treatment.mp4", // Map program to this file
+  "acne treatment": "/videos/treatments/acne-treatment.mp4", // Also map generic acne
+  "under eye treatment": "/videos/treatments/under-eye-treatment.mp4",
+  "dermatological consultation": "/videos/treatments/consultation-info.mp4", // Example if you have a general consult video
+  "aesthetic facial": null, // Explicitly no video for this example
+  // Add more mappings here based on your available videos and expected AI service names
+};
+
+// Function to find the video path based on service name (case-insensitive)
+const getVideoPath = (serviceName: string): string | null => {
+    if (!serviceName) return null;
+    const lowerServiceName = serviceName.toLowerCase();
+    // Try exact match first
+    if (serviceToVideoMap[lowerServiceName] !== undefined) {
+        return serviceToVideoMap[lowerServiceName];
+    }
+    // Optional: Add partial matching if needed (e.g., check if name *includes* a keyword)
+    // for (const key in serviceToVideoMap) {
+    //     if (lowerServiceName.includes(key)) {
+    //         return serviceToVideoMap[key];
+    //     }
+    // }
+    return null; // No match found
+};
+
 export function ConclusionClient() {
   const [storedResult, setStoredResult] = useState<StoredAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [openVideoIndex, setOpenVideoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -99,6 +138,106 @@ export function ConclusionClient() {
   const isFallback = storedResult.fallback;
   const message = storedResult.message;
   const errorDetails = storedResult.errorDetails;
+
+  const renderRecommendationCard = (section: RecommendationSection | undefined, variant: 'default' | 'primary' = 'default') => {
+    if (!section) return null;
+    
+    const isPrimary = variant === 'primary';
+    const isNextSteps = section.title === (recommendations?.nextSteps?.title || "Recommended Next Steps");
+    const isConcernAnalysis = section.title === (recommendations?.concernAnalysis?.title || "Concern Analysis");
+    const isPotentialSolutions = section.title === (recommendations?.potentialSolutions?.title || "Potential Clinic Solutions");
+    const hasSolutions = section.solutions && section.solutions.length > 0;
+
+    return (
+      <div className={cn("p-4 sm:p-5 border rounded-lg", isPrimary && "bg-primary/10 border-primary/20")}>
+        <h4 className={cn(
+          "font-semibold text-base sm:text-lg mb-2",
+          isPrimary ? "text-primary" : "text-foreground"
+        )}>
+          {section.title}
+        </h4>
+        {section.description && (
+          <p className={cn(
+            "text-sm text-muted-foreground whitespace-pre-wrap", 
+            isPrimary && "text-primary/80",
+            isNextSteps && "mb-4",
+            isConcernAnalysis && section.concerns && section.concerns.length > 0 && "mb-3"
+            )}>
+            {section.description}
+          </p>
+        )}
+        {isConcernAnalysis && section.concerns && section.concerns.length > 0 && (
+             <ul className="mt-1 mb-3 space-y-2">
+                {section.concerns.map((concern, index) => (
+                <li key={index} className="flex items-center gap-2.5 text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>{concern}</span>
+                </li>
+                ))}
+            </ul>
+        )}
+        {isPotentialSolutions && section.solutions && section.solutions.length > 0 && (
+          <ul className="mt-3 space-y-4">
+            {section.solutions?.map((solution, index) => {
+              const videoPath = getVideoPath(solution.service);
+              const isVideoOpen = openVideoIndex === index;
+              
+              return (
+                  <li key={index} className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 mt-1 text-primary/70 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                           <span className="font-medium text-sm text-foreground block">{solution.service}</span>
+                           <p className="text-xs text-muted-foreground">{solution.benefit}</p>
+                        </div>
+                        {videoPath && (
+                            <Button 
+                                variant="ghost"
+                                size="icon" 
+                                className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-primary"
+                                onClick={() => setOpenVideoIndex(isVideoOpen ? null : index)}
+                                aria-label={isVideoOpen ? "Close video demo" : "Play video demo"}
+                            >
+                                <PlayCircle className="h-5 w-5" />
+                            </Button>
+                         )}
+                      </div>
+                      {isVideoOpen && videoPath && (
+                        <div className="aspect-video w-full max-w-full bg-secondary rounded overflow-hidden mt-2">
+                          <video 
+                            src={videoPath}
+                            playsInline 
+                            muted 
+                            loop 
+                            controls
+                            autoPlay
+                            className="w-full h-full object-cover"
+                          >
+                             Your browser does not support the video tag.
+                          </video>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+              );
+            })}
+          </ul>
+        )}
+        {isNextSteps && (
+             <Button 
+                variant="gradient" 
+                size="default"
+                className="w-full sm:w-auto mt-4"
+                onClick={() => alert('Booking system integration needed!')} 
+            >
+                Book Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -161,27 +300,10 @@ export function ConclusionClient() {
           <h3 className="text-base sm:text-md font-medium mb-3 sm:mb-4">Personalized Recommendations</h3>
           
           {recommendations ? (
-            <div className="space-y-3 sm:space-y-4">
-              <div className="p-3 sm:p-4 border rounded-lg">
-                <h4 className="font-medium text-sm sm:text-base">{recommendations.concernAnalysis.title || "Concern Analysis"}</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-                  {recommendations.concernAnalysis.description}
-                </p>
-              </div>
-              
-              <div className="p-3 sm:p-4 border rounded-lg">
-                <h4 className="font-medium text-sm sm:text-base">{recommendations.potentialSolutions.title || "Potential Solutions"}</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-                  {recommendations.potentialSolutions.description}
-                </p>
-              </div>
-              
-              <div className="p-3 sm:p-4 border rounded-lg bg-primary/10">
-                <h4 className="font-medium text-primary text-sm sm:text-base">{recommendations.nextSteps.title || "Next Steps"}</h4>
-                <p className="text-xs sm:text-sm text-primary/80 mt-1 whitespace-pre-wrap">
-                  {recommendations.nextSteps.description}
-                </p>
-              </div>
+            <div className="space-y-4 sm:space-y-5">
+              {renderRecommendationCard(recommendations.concernAnalysis)}
+              {renderRecommendationCard(recommendations.potentialSolutions)}
+              {renderRecommendationCard(recommendations.nextSteps, 'primary')}
             </div>
           ) : (
             <div className="p-3 sm:p-4 border rounded-lg text-muted-foreground flex items-center gap-2 text-sm">

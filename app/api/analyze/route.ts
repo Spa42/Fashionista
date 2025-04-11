@@ -34,21 +34,35 @@ if (process.env.GOOGLE_API_KEY) {
   console.warn("GOOGLE_API_KEY not found. AI analysis will rely on OpenAI or fallback data.");
 }
 
+// Updated fallback response structure
 const fallbackResponse = {
-  concernAnalysis: { title: "AI Analysis Unavailable", description: "Could not connect to AI analysis services. Based on common concerns, we recommend a consultation to discuss options like hydration treatments or gentle exfoliation." },
-  potentialSolutions: { title: "General Recommendations", description: "A balanced skincare routine (cleansing, moisturizing, sun protection) is generally advised. Specific treatments require consultation." },
-  nextSteps: { title: "Next Steps", description: "Please schedule an appointment at Khalid's Retreat to discuss your specific needs with one of our specialists." },
+  concernAnalysis: {
+    title: "AI Analysis Unavailable",
+    description: "Could not connect to AI analysis services. Please ensure API keys are configured correctly. Based on common concerns, we recommend a consultation to discuss options like hydration treatments or gentle exfoliation.",
+    concerns: ["Hydration Levels", "Skin Texture"] // Added fallback concerns
+  },
+  potentialSolutions: {
+    title: "General Recommendations",
+    solutions: [
+      { service: "Comprehensive Consultation", benefit: "Allows our specialists to perform tests and create a precise treatment plan tailored to you." },
+      { service: "Balanced Skincare Routine", benefit: "Generally includes cleansing, moisturizing, and sun protection, adaptable to specific needs after consultation." }
+    ]
+  },
+  nextSteps: {
+    title: "Book Your Consultation",
+    description: "This AI analysis is a starting point. For an accurate diagnosis and personalized plan, including necessary tests, we strongly recommend booking an in-person consultation at Khalid's Retreat. Our specialists will provide a comprehensive assessment."
+  },
 };
 
-// Define the shared system prompt structure for easier reuse
+// Updated system prompt with new JSON structure for solutions and concerns list
 const systemPrompt = `You are an expert AI skin consultant for "Khalid's Retreat", a high-end clinic offering Plastic Surgery, Dermatology, Aesthetic Procedures, Laser Treatments, and Hair Transplants.
 Your goal is to analyze the user's provided skin concerns (text description) and/or facial photos (if provided) to identify potential issues and recommend relevant services offered ONLY by Khalid's Retreat.
 Prioritize analysis based on the provided inputs. If only text is given, focus on that. If only images are given, focus on visual analysis. If both are present, integrate the information.
 Be empathetic, professional, and focus on guiding the user towards a consultation at the clinic for definitive diagnosis and treatment plans.
-Structure your response strictly as a JSON object with the following keys, each having 'title' and 'description' sub-keys:
-1. "concernAnalysis": { "title": "Concern Analysis", "description": "Brief analysis of potential concerns based on input." }
-2. "potentialSolutions": { "title": "Potential Clinic Solutions", "description": "Suggest 2-3 relevant services/treatments offered *specifically by Khalid's Retreat* (e.g., Laser resurfacing, Injectable fillers, Dermatological consultation, Aesthetic facial). Keep descriptions brief." }
-3. "nextSteps": { "title": "Recommended Next Steps", "description": "Politely emphasize preliminary nature of AI analysis and strongly recommend scheduling a consultation at Khalid's Retreat for personalized assessment/plan. Include the clinic name." }
+Structure your response strictly as a JSON object with the following keys:
+1. "concernAnalysis": { "title": "Concern Analysis", "description": "A brief, empathetic analysis summary (1-2 sentences).", "concerns": ["Key Concern 1", "Key Concern 2"] } - Identify 2-4 specific key concerns observed (e.g., "Mild Acne/Blemishes", "Uneven Skin Tone", "Fine Lines", "Dullness", "Enlarged Pores") and list them as strings in the concerns array.
+2. "potentialSolutions": { "title": "Potential Clinic Solutions", "solutions": [ { "service": "Relevant Service Name 1", "benefit": "Brief benefit (1 sentence)" }, { "service": "Relevant Service Name 2", "benefit": "Brief benefit (1 sentence)" } ] } - Provide an array of 2-4 relevant services/treatments *specifically offered by Khalid's Retreat*. List the specific service and its primary benefit concisely.
+3. "nextSteps": { "title": "Book a consultation at Khalid's Retreat for a more accurate diagnosis and treatment." }
 Ensure the output is ONLY the JSON object, without any introductory text or markdown formatting.`;
 
 
@@ -115,9 +129,19 @@ export async function POST(request: Request) {
       }
 
       analysisResult = JSON.parse(content);
-      // Basic validation
-      if (!analysisResult.concernAnalysis?.description || !analysisResult.potentialSolutions?.description || !analysisResult.nextSteps?.description) {
-         console.error("OpenAI Parsed response missing required keys/subkeys:", analysisResult);
+      // Validation updated to remove videoFilename check
+      if (!analysisResult.concernAnalysis?.description || 
+          !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
+          analysisResult.concernAnalysis.concerns.length === 0 || 
+          !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
+          analysisResult.potentialSolutions.solutions.length === 0 || 
+          // Check each solution only for service and benefit
+          !analysisResult.potentialSolutions.solutions.every((sol: any) => 
+              typeof sol.service === 'string' && 
+              typeof sol.benefit === 'string'
+          ) ||
+          !analysisResult.nextSteps?.title) {
+         console.error("OpenAI Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
          throw new Error("OpenAI response did not follow the required format.");
       }
       console.log("OpenAI analysis successful.");
@@ -198,9 +222,19 @@ export async function POST(request: Request) {
       }
 
       analysisResult = JSON.parse(responseText);
-       // Basic validation
-       if (!analysisResult.concernAnalysis?.description || !analysisResult.potentialSolutions?.description || !analysisResult.nextSteps?.description) {
-           console.error("Gemini Parsed response missing required keys/subkeys:", analysisResult);
+       // Validation updated to remove videoFilename check
+       if (!analysisResult.concernAnalysis?.description || 
+           !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
+           analysisResult.concernAnalysis.concerns.length === 0 || 
+           !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
+           analysisResult.potentialSolutions.solutions.length === 0 ||
+           // Check each solution only for service and benefit
+           !analysisResult.potentialSolutions.solutions.every((sol: any) => 
+              typeof sol.service === 'string' && 
+              typeof sol.benefit === 'string'
+            ) ||
+           !analysisResult.nextSteps?.title) {
+           console.error("Gemini Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
            throw new Error("Gemini response did not follow the required format.");
        }
        console.log("Gemini analysis successful.");
