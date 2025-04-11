@@ -1,76 +1,87 @@
-import React, { useState } from 'react';
-import { Dropzone } from '@/components/ui/dropzone';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone'; // Import directly for more control
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { 
-  validateImage, 
-  validateDescription, 
-  ACCEPTABLE_IMAGE_TYPES, 
-  MAX_IMAGE_SIZE 
-} from '@/lib/validation';
-
-type PhotoType = 'front' | 'side';
+import { validateImage, validateDescription, ACCEPTABLE_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/lib/validation';
+import { CheckCircle2, AlertCircle, UploadCloud, X, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface UploadedPhoto {
+  id: string; // Add an id for key prop
   file: File;
   preview: string;
+  error?: string;
 }
 
 interface PhotoUploaderProps {
-  onPhotosComplete: (data: { photos: Record<PhotoType, File>; description: string }) => void;
+  onPhotosComplete: (data: { photos: File[]; description: string }) => void;
   disabled?: boolean;
 }
 
+const MAX_FILES = 3;
+
 export function PhotoUploader({ onPhotosComplete, disabled = false }: PhotoUploaderProps) {
-  const [photos, setPhotos] = useState<Partial<Record<PhotoType, UploadedPhoto>>>({});
+  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
   const [description, setDescription] = useState('');
-  const [errors, setErrors] = useState<Partial<Record<PhotoType | 'description', string>>>({});
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [characterCount, setCharacterCount] = useState(0);
 
-  const handleDrop = (type: PhotoType) => (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
+  const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
+    setFormError(null); // Clear general form error on new drop
+    let newPhotos: UploadedPhoto[] = [...uploadedPhotos];
+    let fileErrors: string[] = [];
 
-    const file = acceptedFiles[0];
-    
-    // Use the validation utility
-    const validation = validateImage(file);
-    
-    if (!validation.isValid) {
-      setErrors({ ...errors, [type]: validation.error });
-      return;
-    }
-
-    // Create preview
-    const preview = URL.createObjectURL(file);
-    
-    // Update state
-    setPhotos(prev => ({
-      ...prev,
-      [type]: { file, preview }
-    }));
-    
-    // Clear error if exists
-    if (errors[type]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[type];
-        return newErrors;
-      });
-    }
-  };
-
-  const removePhoto = (type: PhotoType) => {
-    setPhotos(prev => {
-      const newPhotos = { ...prev };
-      
-      // Free memory from the preview URL
-      if (newPhotos[type]?.preview) {
-        URL.revokeObjectURL(newPhotos[type]!.preview);
+    acceptedFiles.forEach(file => {
+      if (newPhotos.length >= MAX_FILES) {
+          fileErrors.push(`Maximum ${MAX_FILES} photos allowed.`);
+          return; // Skip if max files reached
       }
-      
-      delete newPhotos[type];
-      return newPhotos;
+      const validation = validateImage(file);
+      const photoId = `${file.name}-${file.lastModified}-${file.size}`;
+      if (validation.isValid) {
+        // Prevent duplicates based on id
+        if (!newPhotos.some(p => p.id === photoId)) {
+            newPhotos.push({ 
+                id: photoId,
+                file, 
+                preview: URL.createObjectURL(file) 
+            });
+        }
+      } else {
+        fileErrors.push(`${file.name}: ${validation.error}`);
+      }
+    });
+
+    fileRejections.forEach((rejection: any) => {
+        fileErrors.push(`${rejection.file.name}: ${rejection.errors[0].message}`);
+    });
+
+    setUploadedPhotos(newPhotos);
+
+    if (fileErrors.length > 0) {
+        setFormError(fileErrors.join(' \n'));
+    } 
+
+  }, [uploadedPhotos]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: ACCEPTABLE_IMAGE_TYPES.reduce((acc, type) => ({ ...acc, [type]: [] }), {}),
+    maxSize: MAX_IMAGE_SIZE,
+    maxFiles: MAX_FILES, // Can technically drop more, but we handle limit in onDrop
+    disabled: disabled || uploadedPhotos.length >= MAX_FILES
+  });
+
+  const removePhoto = (idToRemove: string) => {
+    setUploadedPhotos(prev => {
+        const photoToRemove = prev.find(p => p.id === idToRemove);
+        if (photoToRemove?.preview) {
+            URL.revokeObjectURL(photoToRemove.preview);
+        }
+        return prev.filter(photo => photo.id !== idToRemove);
     });
   };
 
@@ -78,168 +89,144 @@ export function PhotoUploader({ onPhotosComplete, disabled = false }: PhotoUploa
     const newDescription = e.target.value;
     setDescription(newDescription);
     setCharacterCount(newDescription.length);
-    
-    // Validate the description
     const validation = validateDescription(newDescription);
-    
-    if (!validation.isValid) {
-      setErrors(prev => ({ ...prev, description: validation.error }));
-    } else if (errors.description) {
-      // Clear description error if it exists
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.description;
-        return newErrors;
-      });
+    setDescriptionError(validation.isValid ? null : (validation.error ?? null));
+    if (validation.isValid && formError === 'Description is required if no photos are uploaded.') {
+        setFormError(null); // Clear form error if description becomes valid
     }
   };
 
   const handleSubmit = () => {
-    // Validate that both photos are present
-    const newErrors: Partial<Record<PhotoType | 'description', string>> = {};
-    
-    if (!photos.front) {
-      newErrors.front = 'Front photo is required';
+    const isDescriptionProvided = description.trim().length > 0;
+    const arePhotosProvided = uploadedPhotos.length > 0;
+    const isDescriptionValid = !descriptionError;
+
+    // Reset general form error
+    setFormError(null);
+
+    if (!arePhotosProvided && !isDescriptionProvided) {
+      setFormError('Please upload at least one photo or provide a description.');
+      return;
     }
-    
-    if (!photos.side) {
-      newErrors.side = 'Side photo is required';
-    }
-    
-    // Validate description if provided
-    const descriptionValidation = validateDescription(description);
-    if (!descriptionValidation.isValid) {
-      newErrors.description = descriptionValidation.error;
-    }
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+
+    if (isDescriptionProvided && !isDescriptionValid) {
+      setFormError('Please correct the error in the description.');
+      // Focus the textarea or indicate error visually
       return;
     }
     
-    // All validations passed, call the onPhotosComplete callback
+    // Validation passed
     onPhotosComplete({
-      photos: {
-        front: photos.front!.file,
-        side: photos.side!.file
-      },
+      photos: uploadedPhotos.map(p => p.file),
       description
     });
   };
 
-  const isComplete = photos.front && photos.side;
-  const isDescriptionValid = !errors.description;
-  const isFormValid = isComplete && isDescriptionValid;
+  const canSubmit = (!disabled && (uploadedPhotos.length > 0 || (description.trim().length > 0 && !descriptionError)));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Combined Dropzone and Photo Preview Area */} 
       <div>
-        <h2 className="text-2xl font-semibold mb-6">Upload Your Photos</h2>
-        <p className="text-muted-foreground mb-6">
-          Please upload two clear photos of your face - one from the front and one from the side.
-          Make sure you're in good lighting and not wearing makeup for the most accurate analysis.
-        </p>
+        <Label>Upload Photos (Optional, up to {MAX_FILES})</Label>
+        <div 
+            {...getRootProps()} 
+            className={cn(
+                "mt-2 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
+                (disabled || uploadedPhotos.length >= MAX_FILES) && "cursor-not-allowed opacity-60",
+                formError && (formError.includes('photo') || formError.startsWith('Please upload')) && "border-destructive"
+            )}
+        >
+          <input {...getInputProps()} />
+          {uploadedPhotos.length === 0 ? (
+            <div className="flex flex-col items-center text-muted-foreground">
+                <UploadCloud className="w-10 h-10 mb-2" />
+                <p className="font-medium">
+                    {isDragActive ? 'Drop photos here...' : `Drag & drop photos or click to select`}
+                </p>
+                <p className="text-xs mt-1">Max {MAX_FILES} files (PNG, JPG, WEBP), up to {MAX_IMAGE_SIZE / (1024 * 1024)}MB each</p>
+            </div>
+           ) : (
+            // Show thumbnails when photos are present
+            <div className="grid grid-cols-3 gap-4">
+                 {uploadedPhotos.map(photo => (
+                    <div key={photo.id} className="relative aspect-square rounded-md overflow-hidden border">
+                        <Image 
+                            src={photo.preview}
+                            alt={`Photo preview ${photo.file.name}`}
+                            fill
+                            className="object-cover"
+                        />
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute top-1 right-1 rounded-full p-1 h-6 w-6 z-10 opacity-80 hover:opacity-100" 
+                            onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
+                            disabled={disabled}
+                        >
+                            <X className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                ))}
+                {/* Placeholder for adding more if below max */}
+                {uploadedPhotos.length < MAX_FILES && (
+                    <div className="aspect-square rounded-md border border-dashed flex flex-col items-center justify-center text-muted-foreground bg-secondary/50 hover:bg-secondary/70">
+                        <ImageIcon className="w-8 h-8 mb-1"/>
+                        <span className="text-xs">Add more</span>
+                    </div>
+                )}
+            </div>
+          )}
+        </div>
+         {uploadedPhotos.length >= MAX_FILES && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">Maximum {MAX_FILES} photos uploaded.</p>
+         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-medium mb-2">Front Photo</h3>
-          {photos.front ? (
-            <div className="relative">
-              <Dropzone
-                onDrop={handleDrop('front')}
-                label="Front view of your face"
-                previewUrl={photos.front.preview}
-                error={errors.front}
-              />
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="absolute top-2 right-2 rounded-full p-2 h-8 w-8"
-                onClick={() => removePhoto('front')}
-              >
-                ✕
-              </Button>
-            </div>
-          ) : (
-            <Dropzone
-              onDrop={handleDrop('front')}
-              label="Drag & drop front photo, or click to select"
-              error={errors.front}
-              acceptedFileTypes={ACCEPTABLE_IMAGE_TYPES}
-              maxSize={MAX_IMAGE_SIZE}
-            />
-          )}
-          <p className="text-xs text-muted-foreground mt-2">
-            A clear, well-lit photo of your face from the front.
-          </p>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-medium mb-2">Side Photo</h3>
-          {photos.side ? (
-            <div className="relative">
-              <Dropzone
-                onDrop={handleDrop('side')}
-                label="Side view of your face"
-                previewUrl={photos.side.preview}
-                error={errors.side}
-              />
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="absolute top-2 right-2 rounded-full p-2 h-8 w-8"
-                onClick={() => removePhoto('side')}
-              >
-                ✕
-              </Button>
-            </div>
-          ) : (
-            <Dropzone
-              onDrop={handleDrop('side')}
-              label="Drag & drop side photo, or click to select"
-              error={errors.side}
-              acceptedFileTypes={ACCEPTABLE_IMAGE_TYPES}
-              maxSize={MAX_IMAGE_SIZE}
-            />
-          )}
-          <p className="text-xs text-muted-foreground mt-2">
-            A clear, well-lit photo of your face from the side.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <div className="flex justify-between mb-2">
-          <Label htmlFor="description" optional>Skin Concerns</Label>
+      {/* Description Textarea - Always visible */}
+      <div className="mt-6">
+        <div className="flex justify-between mb-2 items-center">
+          <Label htmlFor="description">Skin Concerns (Optional)</Label>
           <span className={`text-xs ${characterCount > 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {characterCount}/500 characters
+            {characterCount}/500
           </span>
         </div>
         <Textarea
           id="description"
-          placeholder="Describe any specific skin concerns you'd like us to address (e.g., acne, dryness, fine lines, etc.)"
+          placeholder="Describe any specific skin concerns (e.g., acne, dryness...)"
           value={description}
           onChange={handleDescriptionChange}
-          rows={4}
-          error={errors.description}
+          rows={3}
           maxLength={500}
+          className={cn("text-sm", descriptionError && "border-destructive")}
+          disabled={disabled}
         />
-        <p className="text-xs text-muted-foreground mt-2">
-          This helps our AI provide more targeted recommendations for your specific needs.
-        </p>
+        {descriptionError && (
+            <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3"/> {descriptionError}
+            </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">Describe your concerns if you're not uploading photos, or add details.</p>
       </div>
 
-      <div className="flex justify-center mt-8">
+      {/* Submit Button */} 
+      <div className="flex flex-col items-center mt-6 space-y-2">
+        {formError && (
+            <p className="text-sm text-destructive flex items-center gap-1 text-center">
+                <AlertCircle className="w-4 h-4 flex-shrink-0"/> {formError}
+            </p>
+        )}
         <Button 
           variant="gradient" 
           size="lg" 
           onClick={handleSubmit}
-          disabled={!isFormValid || disabled}
+          disabled={!canSubmit || disabled}
+          className="w-full sm:w-auto"
         >
-          {isComplete ? 'Submit for Analysis' : 'Upload Both Photos to Continue'}
+          {disabled ? 'Processing...' : 'Get AI Analysis'}
         </Button>
       </div>
     </div>
   );
-} 
+}
