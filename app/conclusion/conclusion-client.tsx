@@ -47,15 +47,15 @@ interface StoredAnalysisResult {
   timestamp: string;
 }
 
-// Updated mapping
+// Updated mapping with LOWERCASE keys for robust matching
 const serviceToVideoMap: { [key: string]: string } = {
-  "Chemical Peels": "/videos/treatments/chemical-peel.mp4",
-  "Laser Skin Resurfacing": "/videos/treatments/laser-skin-resurfacing.mp4",
-  "Laser Treatment": "/videos/treatments/laser-skin-resurfacing.mp4",
-  "Under Eye Treatment": "/videos/treatments/under-eye-treatment.mp4",
-  "Acne Treatment": "/videos/treatments/acne-treatment.mp4", // Added standard acne treatment
-  "Acne Treatment Program": "/videos/treatments/acne-treatment.mp4", // Added program variation
-  // Add other known variations if necessary
+  "chemical peels": "/videos/treatments/chemical-peel.mp4",
+  "laser skin resurfacing": "/videos/treatments/laser-skin-resurfacing.mp4",
+  "laser treatment": "/videos/treatments/laser-skin-resurfacing.mp4", // Maps to same video
+  "under eye treatment": "/videos/treatments/under-eye-treatment.mp4",
+  "acne treatment": "/videos/treatments/acne-treatment.mp4", 
+  "acne treatment program": "/videos/treatments/acne-treatment.mp4", // Maps to same video
+  // Add other known variations if necessary, ensuring keys are lowercase
   // Add other mappings as needed based on actual service names returned by API
   // Examples from fallback (might not have videos):
   // "Hydration Therapy": "/videos/treatments/hydration-therapy.mp4",
@@ -328,17 +328,20 @@ export function ConclusionClient() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {treatmentRecommendations.map((item, index) => {
-                const videoSrc = serviceToVideoMap[item.service];
+                const serviceNameLower = item.service.toLowerCase();
+                const videoSrc = serviceToVideoMap[serviceNameLower];
+                console.log(`Service: "${item.service}" (Lower: "${serviceNameLower}"), Video found: ${videoSrc || 'None'}`); // Log mapping attempt
+                
                 return (
                   <div key={index} className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-gray-800 flex-1 mr-2">{item.service}</h3>
-                      {videoSrc && (
+                      {videoSrc && ( // Button appears only if videoSrc is found
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-maroon/70 hover:text-maroon hover:bg-maroon/10 flex-shrink-0"
-                          onClick={() => setModalVideoSrc(videoSrc)}
+                          onClick={() => setModalVideoSrc(videoSrc)} // Use the found videoSrc
                           aria-label={`Play video for ${item.service}`}
                         >
                           <PlayCircle className="h-5 w-5" />
@@ -466,6 +469,7 @@ export function ConclusionClient() {
               loop
               onError={(e) => {
                 console.error('Modal video error:', e);
+                console.error(`Failed URL: ${modalVideoSrc}`); // Log the URL that failed
                 setModalVideoSrc(null);
               }}
             >
