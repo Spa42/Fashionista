@@ -72,10 +72,10 @@ const productTypeToImageMap: { [key: string]: string } = {
   // Updated paths based on uploaded files
   "Gentle Cleanser": "/images/products/cleanser.png", 
   "Hydrating Moisturizer": "/images/products/moisturizer.png",
-  "Broad-Spectrum Sunscreen": "/images/products/sunscreen.png", // Corrected path
-  "SPF 30 Sunscreen": "/images/products/sunscreen.png", // Use consistent sunscreen image
-  "Broad-Spectrum Sunscreen, SPF 30": "/images/products/sunscreen.png", 
-  "Broad-Spectrum Sunscreen, SPF 50": "/images/products/sunscreen.png", // Pointing to the correct file
+  "Broad-Spectrum Sunscreen": "/images/products/suscreen.png", // Corrected path to match actual filename
+  "SPF 30 Sunscreen": "/images/products/suscreen.png", // Corrected path
+  "Broad-Spectrum Sunscreen, SPF 30": "/images/products/suscreen.png", // Corrected path 
+  "Broad-Spectrum Sunscreen, SPF 50": "/images/products/suscreen.png", // Corrected path
   "Vitamin C Serum": "/images/products/vitamin-c-serum.jpg", // Kept example, replace if needed
   // Add other product types returned by the LLM and their corresponding image paths
   "default": "/images/products/default-product.png" // Added explicit default
