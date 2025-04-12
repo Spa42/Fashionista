@@ -39,7 +39,8 @@ const fallbackResponse = {
   concernAnalysis: {
     title: "AI Analysis Unavailable",
     description: "Could not connect to AI analysis services. Please ensure API keys are configured correctly. Based on common concerns, we recommend a consultation to discuss options like hydration treatments or gentle exfoliation.",
-    concerns: ["Hydration Levels", "Skin Texture"] // Added fallback concerns
+    concerns: ["Hydration Levels", "Skin Texture"],
+    analysisSummary: "While the AI analysis couldn't run, common skin goals include improving hydration and texture. A consultation can provide a personalized path forward!"
   },
   potentialSolutions: {
     title: "General Recommendations",
@@ -48,21 +49,30 @@ const fallbackResponse = {
       { service: "Balanced Skincare Routine", benefit: "Generally includes cleansing, moisturizing, and sun protection, adaptable to specific needs after consultation." }
     ]
   },
+  recommendedProducts: { // Added fallback products
+    title: "Basic Skincare Suggestions",
+    products: [
+      { type: "Gentle Cleanser", benefit: "Removes impurities without stripping natural oils." },
+      { type: "Hydrating Moisturizer", benefit: "Helps maintain the skin's moisture barrier." },
+      { type: "Broad-Spectrum Sunscreen", benefit: "Protects skin from harmful UV rays." }
+    ]
+  },
   nextSteps: {
     title: "Book Your Consultation",
     description: "This AI analysis is a starting point. For an accurate diagnosis and personalized plan, including necessary tests, we strongly recommend booking an in-person consultation at Khalid's Retreat. Our specialists will provide a comprehensive assessment."
   },
 };
 
-// Updated system prompt with new JSON structure for solutions and concerns list
+// Updated system prompt with new JSON structure for solutions, concerns list, and product types
 const systemPrompt = `You are an expert AI skin consultant for "Khalid's Retreat", a high-end clinic offering Plastic Surgery, Dermatology, Aesthetic Procedures, Laser Treatments, and Hair Transplants.
-Your goal is to analyze the user's provided skin concerns (text description) and/or facial photos (if provided) to identify potential issues and recommend relevant services offered ONLY by Khalid's Retreat.
+Your goal is to analyze the user's provided skin concerns (text description) and/or facial photos (if provided) to identify potential issues and recommend relevant services offered ONLY by Khalid's Retreat and suitable product types.
 Prioritize analysis based on the provided inputs. If only text is given, focus on that. If only images are given, focus on visual analysis. If both are present, integrate the information.
 Be empathetic, professional, and focus on guiding the user towards a consultation at the clinic for definitive diagnosis and treatment plans.
 Structure your response strictly as a JSON object with the following keys:
-1. "concernAnalysis": { "title": "Concern Analysis", "description": "A brief, empathetic analysis summary (1-2 sentences).", "concerns": ["Key Concern 1", "Key Concern 2"] } - Identify 2-4 specific key concerns observed (e.g., "Mild Acne/Blemishes", "Uneven Skin Tone", "Fine Lines", "Dullness", "Enlarged Pores") and list them as strings in the concerns array.
+1. "concernAnalysis": { "title": "Your Skin Concerns Analysis", "description": "A brief, empathetic analysis summary (1-2 sentences).", "concerns": ["Key Concern 1", "Key Concern 2"], "analysisSummary": "An optimistic, concise summary (2-3 sentences) acknowledging the user's concerns (based on photos/description) and positively framing how they can be addressed through clinic solutions and recommended product types." } - Identify 2-4 specific key concerns, list them, AND provide the optimistic summary here.
 2. "potentialSolutions": { "title": "Potential Clinic Solutions", "solutions": [ { "service": "Relevant Service Name 1", "benefit": "Brief benefit (1 sentence)" }, { "service": "Relevant Service Name 2", "benefit": "Brief benefit (1 sentence)" } ] } - Provide an array of 2-4 relevant services/treatments *specifically offered by Khalid's Retreat*. List the specific service and its primary benefit concisely.
-3. "nextSteps": { "title": "Book a consultation at Khalid's Retreat for a more accurate diagnosis and treatment." }
+3. "recommendedProducts": { "title": "Recommended Product Types", "products": [ { "type": "Product Type 1", "benefit": "Why it helps with identified concerns (1 sentence)" }, { "type": "Product Type 2", "benefit": "Why it helps (1 sentence)" } ] } - Suggest 2-4 product *types* relevant to the identified concerns. Briefly explain the benefit for the user's specific situation. **Crucially, this list MUST ALWAYS include a suitable moisturizer type (e.g., 'Hydrating Moisturizer') and a suitable sunscreen type (e.g., 'Broad-Spectrum Sunscreen', 'SPF 30 Sunscreen', 'SPF 50 Sunscreen')** as these are essential for our Middle Eastern clientele due to the dry climate and strong sun. Tailor the benefit description for these two based on the user's other concerns if possible, otherwise provide a general benefit.
+4. "nextSteps": { "title": "Next Steps", "description": "Advise the user to book a consultation at Khalid's Retreat for a more accurate diagnosis and personalized treatment plan." }
 Ensure the output is ONLY the JSON object, without any introductory text or markdown formatting.`;
 
 
@@ -133,12 +143,19 @@ export async function POST(request: Request) {
       if (!analysisResult.concernAnalysis?.description || 
           !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
           analysisResult.concernAnalysis.concerns.length === 0 || 
+          !analysisResult.concernAnalysis?.analysisSummary ||
           !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
           analysisResult.potentialSolutions.solutions.length === 0 || 
           // Check each solution only for service and benefit
           !analysisResult.potentialSolutions.solutions.every((sol: any) => 
               typeof sol.service === 'string' && 
               typeof sol.benefit === 'string'
+          ) ||
+          !analysisResult.recommendedProducts?.title ||
+          !Array.isArray(analysisResult.recommendedProducts?.products) ||
+          analysisResult.recommendedProducts.products.length === 0 ||
+          !analysisResult.recommendedProducts.products.every((prod: any) =>
+              typeof prod.type === 'string' && typeof prod.benefit === 'string'
           ) ||
           !analysisResult.nextSteps?.title) {
          console.error("OpenAI Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
@@ -225,14 +242,21 @@ export async function POST(request: Request) {
        // Validation updated to remove videoFilename check
        if (!analysisResult.concernAnalysis?.description || 
            !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
-           analysisResult.concernAnalysis.concerns.length === 0 || 
+           analysisResult.concernAnalysis.concerns.length === 0 ||
+           !analysisResult.concernAnalysis?.analysisSummary ||
            !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
-           analysisResult.potentialSolutions.solutions.length === 0 ||
+           analysisResult.potentialSolutions.solutions.length === 0 || 
            // Check each solution only for service and benefit
            !analysisResult.potentialSolutions.solutions.every((sol: any) => 
               typeof sol.service === 'string' && 
               typeof sol.benefit === 'string'
             ) ||
+           !analysisResult.recommendedProducts?.title ||
+           !Array.isArray(analysisResult.recommendedProducts?.products) ||
+           analysisResult.recommendedProducts.products.length === 0 ||
+           !analysisResult.recommendedProducts.products.every((prod: any) =>
+              typeof prod.type === 'string' && typeof prod.benefit === 'string'
+           ) ||
            !analysisResult.nextSteps?.title) {
            console.error("Gemini Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
            throw new Error("Gemini response did not follow the required format.");

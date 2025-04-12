@@ -13,32 +13,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Beauty AI - AI Skin Consultation",
-  description: "Get personalized skin care recommendations with our AI-powered consultation tool.",
-  keywords: "beauty, skincare, AI, consultation, skin analysis",
-  authors: [{ name: "Beauty AI Team" }],
-  creator: "Beauty AI",
-  publisher: "Beauty AI",
+  title: "Dr. Bashar Clinic - AI Skin Consultant",
+  description: "Get personalized skincare recommendations with our AI-powered skin analysis.",
+  keywords: "skincare, dermatology, AI, consultation, skin analysis, personalized treatments",
+  authors: [{ name: "Dr. Bashar Clinic Team" }],
+  creator: "Dr. Bashar Clinic",
+  publisher: "Dr. Bashar Clinic",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://beauty-ai.example.com",
-    title: "Beauty AI - Personalized AI Skin Consultation",
-    description: "Get personalized skin care recommendations with our AI-powered consultation tool.",
-    siteName: "Beauty AI",
+    url: "https://drbashar.example.com",
+    title: "Dr. Bashar Clinic - AI Skin Consultant",
+    description: "Get personalized skincare recommendations with our AI-powered skin analysis.",
+    siteName: "Dr. Bashar Clinic",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Beauty AI - AI Skin Consultation",
+        alt: "Dr. Bashar Clinic - AI Skin Consultant",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Beauty AI - Personalized AI Skin Consultation",
-    description: "Get personalized skin care recommendations with our AI-powered consultation tool.",
+    title: "Dr. Bashar Clinic - AI Skin Consultant",
+    description: "Get personalized skincare recommendations with our AI-powered skin analysis.",
     images: ["/og-image.jpg"],
   },
 };

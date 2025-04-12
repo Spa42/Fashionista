@@ -1,130 +1,116 @@
 'use client';
 
-import { useState, Dispatch, SetStateAction } from 'react';
-import { useRouter } from 'next/navigation';
-import { PhotoUploader } from '@/components/upload/photo-uploader';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { ClientPhotoGuide } from './client-photo-guide';
+import { PhotoUploader } from '@/components/upload/photo-uploader';
+import { Spinner } from '@/components/ui/spinner';
 
-// Interface for a single recommendation section
-interface RecommendationSection {
-  title: string;
-  description: string;
-}
-
-// Interface for the full set of recommendations
-interface RecommendationsPayload {
-  concernAnalysis: RecommendationSection;
-  potentialSolutions: RecommendationSection;
-  nextSteps: RecommendationSection;
-}
-
-// Interface for the expected API response
-interface ApiResponse {
-  recommendations: RecommendationsPayload | null;
-  fallback: boolean;
-  message?: string;
-  errorDetails?: string;
-  error?: string; // Added for direct API error messages
-}
-
-// Define props for UploadForm
 interface UploadFormProps {
-  onAnalysisComplete: (result: ApiResponse & { timestamp: string }) => void; // Pass the full enriched response
+  onAnalysisComplete: (result: any) => void;
   onAnalysisError: (error: string) => void;
-  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setIsLoading: (isLoading: boolean) => void;
   isLoading: boolean;
 }
 
-// Utility function to convert File to Base64
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
+export function UploadForm({ onAnalysisComplete, onAnalysisError, setIsLoading, isLoading }: UploadFormProps) {
+  const [showGuide, setShowGuide] = useState(false);
 
-export function UploadForm({ 
-  onAnalysisComplete, 
-  onAnalysisError, 
-  setIsLoading, 
-  isLoading 
-}: UploadFormProps) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const handleToggleGuide = () => {
+    setShowGuide(!showGuide);
+  };
 
-  const handlePhotoDataSubmit = async (data: { 
-    photos: File[];
-    description: string 
-  }) => {
+  const handlePhotosComplete = async (data: { photos: File[]; description: string }) => {
     setIsLoading(true);
-    setError(null);
-
+    
     try {
-      // Convert images to base64
-      const base64Images = await Promise.all(
-        data.photos.map(photo => fileToBase64(photo))
-      );
-
-      // Construct payload: Send description and an array of base64 images
-      const payload = {
-        description: data.description,
-        images: base64Images,
-      };
-
-      // Call the API route
+      const { photos, description } = data;
+      const base64Photos: string[] = [];
+      
+      // Convert photos to base64
+      for (const photo of photos) {
+        try {
+          const base64 = await convertFileToBase64(photo);
+          base64Photos.push(base64);
+        } catch (error) {
+          console.error("Error converting photo to base64:", error);
+          onAnalysisError("Error processing photos. Please try again.");
+          return;
+        }
+      }
+      
+      // Send to API for analysis
       const response = await fetch('/api/analyze', {
-        method: 'POST', 
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          images: base64Photos,
+          description: description
+        }),
       });
-
-      const result: ApiResponse = await response.json();
-
+      
       if (!response.ok) {
-        // Use error message from API response if available, otherwise generic error
-        throw new Error(result.error || result.message || `API Error (${response.status}): ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! Status: ${response.status}`);
       }
-
-      // Add timestamp to the result before passing it up
-      const resultWithTimestamp = {
-          ...result,
-          timestamp: new Date().toISOString()
-      };
-
-      // Handle successful analysis (even if it's a fallback response)
-      onAnalysisComplete(resultWithTimestamp);
-
+      
+      const result = await response.json();
+      onAnalysisComplete(result);
+      
     } catch (error: any) {
-      console.error("Analysis API call failed:", error);
-      const errorMessage = error.message || "An unexpected error occurred during analysis.";
-      setError(errorMessage);
-      onAnalysisError(errorMessage);
-      // No need to remove localStorage item here, handled in parent or conclusion page
-    } finally {
-      // Loading state is managed by the parent component now
-      // setIsLoading(false); // Let parent component handle this
+      console.error("Error during analysis:", error);
+      onAnalysisError(error.message || "Failed to analyze images. Please try again.");
     }
   };
 
+  // Helper function to convert File to base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   return (
-    <div>
-      {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg mb-4 text-sm">
-          {error}
+    <div className="space-y-6">
+      {!isLoading ? (
+        <>
+          <div className="flex items-end justify-end">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={handleToggleGuide}
+              className="text-maroon hover:text-maroon/80 border-maroon/20 hover:border-maroon/40"
+            >
+              {showGuide ? "Hide Guidelines" : "Photo Guidelines"}
+            </Button>
+          </div>
+          
+          {showGuide && (
+            <div className="mb-4 bg-gray-50 rounded-lg p-4 border border-gray-100">
+              <ClientPhotoGuide />
+            </div>
+          )}
+          
+          <PhotoUploader 
+            onPhotosComplete={handlePhotosComplete}
+            disabled={isLoading}
+          />
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Spinner size="lg" className="text-maroon mb-6" />
+          <h3 className="text-lg font-medium text-gray-800 mb-2">Analyzing your skin...</h3>
+          <p className="text-gray-600 text-sm text-center max-w-md">
+            Our AI is examining your photos and concerns to provide personalized recommendations. This usually takes less than a minute.
+          </p>
         </div>
       )}
-      
-      <PhotoUploader 
-        onPhotosComplete={handlePhotoDataSubmit} 
-        disabled={isLoading} 
-      />
-      
-      {/* Loading indicator handled by parent */} 
     </div>
   );
 } 

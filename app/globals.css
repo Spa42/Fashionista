@@ -41,10 +41,11 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-maroon: var(--maroon);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.85rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -76,6 +77,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Fashionista Colors */
+  --maroon: #9E2A2B;
 }
 
 .dark {
@@ -110,6 +114,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* Fashionista Dark Mode Colors */
+  --maroon: #c93a3b;
 }
 
 @layer base {
@@ -120,17 +127,18 @@
     @apply bg-background text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.015em;
   }
   button, a, input, textarea, select {
-    @apply transition-all duration-200 ease-in-out;
+    @apply transition-all duration-250 ease-out;
   }
   *:focus-visible {
-    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+    @apply ring-2 ring-maroon/60 ring-offset-1 ring-offset-background;
   }
 }
 
 @layer utilities {
-  /* Animated Gradient Background */
+  /* Refined animations */
   @keyframes gradient-xy {
     0%, 100% {
       background-position: 0% 50%;
@@ -140,6 +148,80 @@
     }
   }
   .animate-gradient-xy {
-    animation: gradient-xy 15s ease infinite;
+    animation: gradient-xy 18s ease infinite;
+  }
+  
+  /* Shadow utilities */
+  .shadow-soft {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 5px 10px -5px rgba(0, 0, 0, 0.02);
+  }
+  
+  .shadow-soft-lg {
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.08), 0 10px 20px -10px rgba(0, 0, 0, 0.03);
+  }
+  
+  /* Fashionista Color Utilities */
+  .text-maroon {
+    color: var(--maroon);
+  }
+  
+  .bg-maroon {
+    background-color: var(--maroon);
+  }
+  
+  .border-maroon {
+    border-color: var(--maroon);
+  }
+  
+  .bg-maroon\/5 {
+    background-color: rgba(158, 42, 43, 0.05);
+  }
+  
+  .bg-maroon\/10 {
+    background-color: rgba(158, 42, 43, 0.1);
+  }
+  
+  .bg-maroon\/20 {
+    background-color: rgba(158, 42, 43, 0.2);
+  }
+  
+  .text-maroon\/10 {
+    color: rgba(158, 42, 43, 0.1);
+  }
+  
+  .text-maroon\/20 {
+    color: rgba(158, 42, 43, 0.2);
+  }
+  
+  .border-maroon\/5 {
+    border-color: rgba(158, 42, 43, 0.05);
+  }
+  
+  .border-maroon\/10 {
+    border-color: rgba(158, 42, 43, 0.1);
+  }
+  
+  .border-maroon\/30 {
+    border-color: rgba(158, 42, 43, 0.3);
+  }
+  
+  .hover\:text-maroon:hover {
+    color: var(--maroon);
+  }
+  
+  .hover\:bg-maroon\/5:hover {
+    background-color: rgba(158, 42, 43, 0.05);
+  }
+  
+  .hover\:border-maroon:hover {
+    border-color: var(--maroon);
+  }
+  
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 }

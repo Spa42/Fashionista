@@ -7,7 +7,12 @@ export interface ValidationResult {
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 // Acceptable image MIME types
-export const ACCEPTABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export const ACCEPTABLE_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+];
 
 /**
  * Validates an image file for type and size constraints
@@ -17,7 +22,7 @@ export function validateImage(file: File): ValidationResult {
   if (!ACCEPTABLE_IMAGE_TYPES.includes(file.type)) {
     return {
       isValid: false,
-      error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.',
+      error: `Invalid file type. Only ${ACCEPTABLE_IMAGE_TYPES.map(type => type.split('/')[1]).join(', ')} are allowed.`
     };
   }
 
@@ -25,7 +30,7 @@ export function validateImage(file: File): ValidationResult {
   if (file.size > MAX_IMAGE_SIZE) {
     return {
       isValid: false,
-      error: `File too large. Maximum size is ${MAX_IMAGE_SIZE / 1024 / 1024}MB.`,
+      error: `File too large. Maximum size is ${MAX_IMAGE_SIZE / (1024 * 1024)}MB.`
     };
   }
 
@@ -35,17 +40,28 @@ export function validateImage(file: File): ValidationResult {
 /**
  * Validates description text for skin concerns
  */
-export function validateDescription(text: string): ValidationResult {
-  // Description is optional, so empty is valid
-  if (!text.trim()) {
+export function validateDescription(description: string): ValidationResult {
+  // Remove leading/trailing whitespace
+  const trimmedDescription = description.trim();
+  
+  // Skip validation if empty (description is optional)
+  if (!trimmedDescription) {
     return { isValid: true };
   }
-
-  // Check if description is too long (limit to 500 characters)
-  if (text.length > 500) {
+  
+  // Check minimum length
+  if (trimmedDescription.length < 10) {
     return {
       isValid: false,
-      error: 'Description is too long. Please limit to 500 characters.',
+      error: 'Description should be at least 10 characters if provided.'
+    };
+  }
+  
+  // Check maximum length (though this should be handled by the UI maxLength)
+  if (trimmedDescription.length > 500) {
+    return {
+      isValid: false,
+      error: 'Description cannot exceed 500 characters.'
     };
   }
 

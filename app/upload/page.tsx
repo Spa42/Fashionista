@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UploadForm } from './upload-form';
 import { Container } from '@/components/ui/container';
-import { Header } from '@/components/layout/header';
-import { PhotoGuide } from '@/components/upload/photo-guide';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Terminal } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
+import Link from "next/link";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -33,36 +32,43 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-1 py-8 sm:py-12">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <header className="py-4 sticky top-0 z-50 w-full border-b border-maroon/10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-sm">
         <Container>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-            <div className="lg:col-span-2">
-              <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-center lg:text-left">Skin Consultation</h1>
-              <p className="text-muted-foreground mb-6 text-center lg:text-left"> 
-                Upload photos of your face for our AI to analyze and provide personalized skincare recommendations.
-              </p>
+          <div className="flex items-center justify-between h-14">
+            <Link href="/" className="flex items-center space-x-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-maroon">
+                Dr. Bashar Clinic
+              </h1>
+            </Link>
+          </div>
+        </Container>
+      </header>
 
-              {error && (
-                 <Alert variant="destructive" className="mb-6">
-                  <Terminal className="h-4 w-4" />
-                  <AlertTitle>Analysis Failed</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+      <main className="flex-1 py-6 sm:py-10">
+        <Container className="max-w-lg">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-3 text-gray-800">Skin Consultation</h1>
+            <p className="text-gray-600 max-w-md mx-auto text-sm">
+              Upload photos and describe your skin concerns for AI-powered analysis.
+            </p>
+          </div>
 
-              <UploadForm 
-                 onAnalysisComplete={handleAnalysisComplete} 
-                 onAnalysisError={handleAnalysisError}
-                 setIsLoading={setIsLoading}
-                 isLoading={isLoading}
-              />
-            </div>
+          {error && (
+            <Alert variant="destructive" className="mb-6 border border-red-200 bg-red-50">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Analysis Failed</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <aside className="lg:col-span-1">
-              <PhotoGuide className="sticky top-24" />
-            </aside>
+          <div className="bg-white rounded-xl shadow-soft-lg p-6 border border-gray-100">
+            <UploadForm 
+              onAnalysisComplete={handleAnalysisComplete} 
+              onAnalysisError={handleAnalysisError}
+              setIsLoading={setIsLoading}
+              isLoading={isLoading}
+            />
           </div>
         </Container>
       </main>

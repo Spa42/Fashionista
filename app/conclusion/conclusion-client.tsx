@@ -1,14 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Stepper, Step } from '@/components/ui/stepper';
-import { AlertCircle, CheckCircle2, Info, ArrowRight, Sparkles, PlayCircle } from 'lucide-react';
+import { ArrowRight, Check, Star, TrendingUp, PlayCircle, X, Maximize } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Keep this if it's there
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Solution {
   service: string;
+  benefit: string;
+}
+
+// New interface for product recommendations
+interface ProductRecommendation {
+  type: string; // e.g., "Hydrating Moisturizer", "Vitamin C Serum"
   benefit: string;
 }
 
@@ -17,11 +28,14 @@ interface RecommendationSection {
   description?: string;
   solutions?: Solution[];
   concerns?: string[];
+  products?: ProductRecommendation[]; // Added products array
+  analysisSummary?: string; // Added analysis summary field
 }
 
 interface RecommendationsPayload {
   concernAnalysis: RecommendationSection;
   potentialSolutions: RecommendationSection;
+  recommendedProducts: RecommendationSection; // Added recommended products section
   nextSteps: RecommendationSection;
 }
 
@@ -33,61 +47,48 @@ interface StoredAnalysisResult {
   timestamp: string;
 }
 
-const steps: Step[] = [
-  {
-    id: 'upload',
-    title: 'Upload',
-    description: 'Photos/Details'
-  },
-  {
-    id: 'processing',
-    title: 'AI Analysis',
-    description: 'Processing'
-  },
-  {
-    id: 'results',
-    title: 'Results',
-    description: 'View Results'
-  }
-];
-
-// --- Video Mapping --- 
-// Map AI service names (or keywords) to actual video file paths in /public
-const serviceToVideoMap: Record<string, string | null> = {
-  // Exact matches (lowercase) - Add more as needed
-  "chemical peels": "/videos/treatments/chemical-peel.mp4", // Note singular peel in filename
-  "laser skin resurfacing": "/videos/treatments/laser-skin-resurfacing.mp4",
-  "acne treatment program": "/videos/treatments/acne-treatment.mp4", // Map program to this file
-  "acne treatment": "/videos/treatments/acne-treatment.mp4", // Also map generic acne
-  "under eye treatment": "/videos/treatments/under-eye-treatment.mp4",
-  "dermatological consultation": "/videos/treatments/consultation-info.mp4", // Example if you have a general consult video
-  "aesthetic facial": null, // Explicitly no video for this example
-  // Add more mappings here based on your available videos and expected AI service names
+// Updated mapping
+const serviceToVideoMap: { [key: string]: string } = {
+  "Chemical Peels": "/videos/treatments/chemical-peel.mp4",
+  "Laser Skin Resurfacing": "/videos/treatments/laser-skin-resurfacing.mp4",
+  "Laser Treatment": "/videos/treatments/laser-skin-resurfacing.mp4",
+  "Under Eye Treatment": "/videos/treatments/under-eye-treatment.mp4",
+  "Acne Treatment": "/videos/treatments/acne-treatment.mp4", // Added standard acne treatment
+  "Acne Treatment Program": "/videos/treatments/acne-treatment.mp4", // Added program variation
+  // Add other known variations if necessary
+  // Add other mappings as needed based on actual service names returned by API
+  // Examples from fallback (might not have videos):
+  // "Hydration Therapy": "/videos/treatments/hydration-therapy.mp4",
+  // "Gentle Exfoliation": "/videos/treatments/gentle-exfoliation.mp4",
+  // "Antioxidant Treatment": "/videos/treatments/antioxidant-treatment.mp4",
 };
 
-// Function to find the video path based on service name (case-insensitive)
-const getVideoPath = (serviceName: string): string | null => {
-    if (!serviceName) return null;
-    const lowerServiceName = serviceName.toLowerCase();
-    // Try exact match first
-    if (serviceToVideoMap[lowerServiceName] !== undefined) {
-        return serviceToVideoMap[lowerServiceName];
-    }
-    // Optional: Add partial matching if needed (e.g., check if name *includes* a keyword)
-    // for (const key in serviceToVideoMap) {
-    //     if (lowerServiceName.includes(key)) {
-    //         return serviceToVideoMap[key];
-    //     }
-    // }
-    return null; // No match found
+// New mapping for product types to image paths
+// **** USER ACTION REQUIRED: Add your product images to public/images/products ****
+// **** and update this mapping accordingly. Keys should match possible 'type' values from the LLM. ****
+const productTypeToImageMap: { [key: string]: string } = {
+  // Updated paths based on uploaded files
+  "Gentle Cleanser": "/images/products/cleanser.png", 
+  "Hydrating Moisturizer": "/images/products/moisturizer.png",
+  "Broad-Spectrum Sunscreen": "/images/products/sunscreen.png", // Corrected path
+  "SPF 30 Sunscreen": "/images/products/sunscreen.png", // Use consistent sunscreen image
+  "Broad-Spectrum Sunscreen, SPF 30": "/images/products/sunscreen.png", 
+  "Broad-Spectrum Sunscreen, SPF 50": "/images/products/sunscreen.png", // Pointing to the correct file
+  "Vitamin C Serum": "/images/products/vitamin-c-serum.jpg", // Kept example, replace if needed
+  // Add other product types returned by the LLM and their corresponding image paths
+  "default": "/images/products/default-product.png" // Added explicit default
 };
 
 export function ConclusionClient() {
   const [storedResult, setStoredResult] = useState<StoredAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [openVideoIndex, setOpenVideoIndex] = useState<number | null>(null);
-
+  const [selectedTab, setSelectedTab] = useState<string>('analysis');
+  const [modalVideoSrc, setModalVideoSrc] = useState<string | null>(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const router = useRouter();
+  
   useEffect(() => {
     setLoading(true);
     setLocalError(null);
@@ -95,13 +96,74 @@ export function ConclusionClient() {
       const savedResult = localStorage.getItem('analysisResult');
       
       if (savedResult) {
-        const parsedResult: StoredAnalysisResult = JSON.parse(savedResult);
+        const parsedResult = JSON.parse(savedResult) as StoredAnalysisResult; // Assume structure for now
         if (!parsedResult.timestamp) {
           parsedResult.timestamp = new Date().toISOString();
         }
+        
+        // Define default product recommendations separately for clarity
+        const defaultProductRecs = {
+          title: "Basic Skincare Suggestions",
+          products: [
+            { type: "Gentle Cleanser", benefit: "Removes impurities without stripping natural oils." },
+            { type: "Hydrating Moisturizer", benefit: "Helps maintain the skin's moisture barrier." },
+            { type: "Broad-Spectrum Sunscreen", benefit: "Protects skin from harmful UV rays." }
+          ]
+        };
+
+        // Ensure the recommendations object and its product field exist
+        if (parsedResult.recommendations) {
+          if (!parsedResult.recommendations.recommendedProducts) {
+            // Add default product recommendations if they are missing
+            parsedResult.recommendations.recommendedProducts = defaultProductRecs;
+          }
+        } else {
+          // If the entire recommendations object is missing, create a minimal fallback
+          // This case should ideally not happen if data was saved correctly, but handles corruption.
+          console.warn("Stored recommendations object missing, creating minimal fallback.");
+          parsedResult.recommendations = {
+             concernAnalysis: { title: "Analysis Incomplete", concerns: [] }, // Minimal valid structure
+             potentialSolutions: { title: "Solutions Unavailable", solutions: [] }, // Minimal valid structure
+             nextSteps: { title: "Consultation Recommended", description: ""}, // Minimal valid structure
+             recommendedProducts: defaultProductRecs // Add the default products
+          };
+        }
         setStoredResult(parsedResult);
       } else {
-        setLocalError('No analysis data found in local storage. Please upload your photos first.');
+        // For demo purposes, set a fallback result if no real analysis exists
+        setStoredResult({
+          recommendations: {
+            concernAnalysis: {
+              title: "Skin Analysis",
+              description: "Based on our analysis, your skin shows signs of mild dehydration and uneven texture. There are also indications of environmental damage and early signs of aging.",
+              concerns: ["Dehydration", "Uneven Texture", "Environmental Damage", "Early Aging Signs"]
+            },
+            potentialSolutions: {
+              title: "Treatment Recommendations",
+              solutions: [
+                { service: "Hydration Therapy", benefit: "Deep moisturizing treatment to restore skin's moisture barrier and improve overall hydration." },
+                { service: "Gentle Exfoliation", benefit: "Removes dead skin cells to improve texture and enhance product absorption." },
+                { service: "Antioxidant Treatment", benefit: "Protects against environmental damage and reduces signs of premature aging." },
+                { service: "Custom Skincare Regimen", benefit: "Personalized daily routine designed for your specific skin concerns and needs." }
+              ]
+            },
+            recommendedProducts: { // Add fallback products here too
+              title: "Basic Skincare Suggestions",
+              products: [
+                { type: "Gentle Cleanser", benefit: "Removes impurities without stripping natural oils." },
+                { type: "Hydrating Moisturizer", benefit: "Helps maintain the skin's moisture barrier." },
+                { type: "Broad-Spectrum Sunscreen", benefit: "Protects skin from harmful UV rays." }
+              ]
+            },
+            nextSteps: {
+              title: "Recommended Actions",
+              description: "To address your skin concerns effectively, we recommend booking a consultation at Dr. Bashar Clinic for a comprehensive in-person assessment and personalized treatment plan."
+            }
+          },
+          fallback: true,
+          message: "Sample skin analysis provided for demonstration.",
+          timestamp: new Date().toISOString()
+        });
       }
     } catch (err: any) {
       console.error('Error loading analysis result from localStorage:', err);
@@ -109,21 +171,40 @@ export function ConclusionClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
+
+  const openImageModal = (productType: string) => {
+    console.log("Opening image modal for type:", productType);
+    const imageUrl = productTypeToImageMap[productType] || '/images/products/placeholder.jpg'; // Use placeholder if no map entry
+    console.log("Resolved image URL:", imageUrl);
+    setSelectedImageUrl(imageUrl);
+    setImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedImageUrl(null);
+  };
 
   if (loading) {
-    return <div className="flex justify-center py-12 px-4">Loading your results...</div>;
+    return <div className="flex justify-center items-center py-20 px-4">
+      <div className="animate-pulse space-y-4 w-full max-w-md">
+        <div className="h-8 bg-maroon/10 rounded-lg w-3/4 mx-auto"></div>
+        <div className="h-64 bg-maroon/5 rounded-xl"></div>
+        <div className="h-8 bg-maroon/10 rounded-lg w-1/2 mx-auto"></div>
+      </div>
+    </div>;
   }
 
   if (localError || !storedResult) {
     return (
-      <div className="text-center py-12 px-4">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4">Analysis Data Issue</h1>
-        <p className="mb-8 text-muted-foreground">
-          {localError || 'Could not retrieve analysis results.'}
+      <div className="text-center py-16 px-4">
+        <h1 className="text-3xl font-bold mb-4 text-gray-800">Analysis Unavailable</h1>
+        <p className="mb-8 text-gray-600 max-w-md mx-auto">
+          {localError || 'Could not retrieve skin analysis results.'}
         </p>
         <Link href="/upload">
-          <Button variant="gradient">Go to Upload</Button>
+          <Button variant="gradient">Retry Skin Analysis</Button>
         </Link>
       </div>
     );
@@ -136,188 +217,291 @@ export function ConclusionClient() {
 
   const recommendations = storedResult.recommendations;
   const isFallback = storedResult.fallback;
-  const message = storedResult.message;
-  const errorDetails = storedResult.errorDetails;
-
-  const renderRecommendationCard = (section: RecommendationSection | undefined, variant: 'default' | 'primary' = 'default') => {
-    if (!section) return null;
-    
-    const isPrimary = variant === 'primary';
-    const isNextSteps = section.title === (recommendations?.nextSteps?.title || "Recommended Next Steps");
-    const isConcernAnalysis = section.title === (recommendations?.concernAnalysis?.title || "Concern Analysis");
-    const isPotentialSolutions = section.title === (recommendations?.potentialSolutions?.title || "Potential Clinic Solutions");
-    const hasSolutions = section.solutions && section.solutions.length > 0;
-
-    return (
-      <div className={cn("p-4 sm:p-5 border rounded-lg", isPrimary && "bg-primary/10 border-primary/20")}>
-        <h4 className={cn(
-          "font-semibold text-base sm:text-lg mb-2",
-          isPrimary ? "text-primary" : "text-foreground"
-        )}>
-          {section.title}
-        </h4>
-        {section.description && (
-          <p className={cn(
-            "text-sm text-muted-foreground whitespace-pre-wrap", 
-            isPrimary && "text-primary/80",
-            isNextSteps && "mb-4",
-            isConcernAnalysis && section.concerns && section.concerns.length > 0 && "mb-3"
-            )}>
-            {section.description}
-          </p>
-        )}
-        {isConcernAnalysis && section.concerns && section.concerns.length > 0 && (
-             <ul className="mt-1 mb-3 space-y-2">
-                {section.concerns.map((concern, index) => (
-                <li key={index} className="flex items-center gap-2.5 text-sm font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span>{concern}</span>
-                </li>
-                ))}
-            </ul>
-        )}
-        {isPotentialSolutions && section.solutions && section.solutions.length > 0 && (
-          <ul className="mt-3 space-y-4">
-            {section.solutions?.map((solution, index) => {
-              const videoPath = getVideoPath(solution.service);
-              const isVideoOpen = openVideoIndex === index;
-              
-              return (
-                  <li key={index} className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 mt-1 text-primary/70 flex-shrink-0" />
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start gap-2">
-                        <div>
-                           <span className="font-medium text-sm text-foreground block">{solution.service}</span>
-                           <p className="text-xs text-muted-foreground">{solution.benefit}</p>
-                        </div>
-                        {videoPath && (
-                            <Button 
-                                variant="ghost"
-                                size="icon" 
-                                className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-primary"
-                                onClick={() => setOpenVideoIndex(isVideoOpen ? null : index)}
-                                aria-label={isVideoOpen ? "Close video demo" : "Play video demo"}
-                            >
-                                <PlayCircle className="h-5 w-5" />
-                            </Button>
-                         )}
-                      </div>
-                      {isVideoOpen && videoPath && (
-                        <div className="aspect-video w-full max-w-full bg-secondary rounded overflow-hidden mt-2">
-                          <video 
-                            src={videoPath}
-                            playsInline 
-                            muted 
-                            loop 
-                            controls
-                            autoPlay
-                            className="w-full h-full object-cover"
-                          >
-                             Your browser does not support the video tag.
-                          </video>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-              );
-            })}
-          </ul>
-        )}
-        {isNextSteps && (
-             <Button 
-                variant="gradient" 
-                size="default"
-                className="w-full sm:w-auto mt-4"
-                onClick={() => alert('Booking system integration needed!')} 
-            >
-                Book Now
-                <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-        )}
-      </div>
-    );
-  };
-
+  const skinConcerns = recommendations?.concernAnalysis?.concerns || [];
+  const treatmentRecommendations = recommendations?.potentialSolutions?.solutions || [];
+  const productRecommendations = recommendations?.recommendedProducts?.products || []; // Get product recommendations
+  
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 sm:mb-8">
-        <Stepper steps={steps} activeStep="results" />
-      </div>
-
-      <div className="text-center mb-8 sm:mb-10">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
-          Your AI Skin Consultation Results
+    <div className="min-h-screen">
+      <div className="text-center mb-6 pt-4">
+        <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-maroon/10 text-maroon mb-3">
+          ANALYSIS COMPLETE
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-800 mb-4">
+          Your Skin Analysis Results
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-           {isFallback ? "Displaying general recommendations as AI analysis encountered issues." : "Here are the personalized recommendations based on our AI analysis."}
-        </p>
-      </div>
-
-      <div className="bg-card rounded-xl p-4 sm:p-6 shadow-sm border mb-6 sm:mb-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4">Analysis Summary</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-5 sm:mb-6">
-          <div className="p-3 sm:p-4 bg-secondary/30 rounded-lg">
-            <div className="text-xs sm:text-sm text-muted-foreground">Analysis Generated</div>
-            <div className="font-medium text-sm sm:text-base">{formattedDate}</div>
-          </div>
-          
-          <div className="p-3 sm:p-4 bg-secondary/30 rounded-lg">
-            <div className="text-xs sm:text-sm text-muted-foreground">Status</div>
-            <div className={cn(
-                 "font-medium flex items-center gap-1.5 text-sm sm:text-base",
-                 isFallback ? 'text-amber-600' : 'text-green-600'
-                )}>
-              {isFallback ? <AlertCircle className="w-4 h-4 flex-shrink-0"/> : <CheckCircle2 className="w-4 h-4 flex-shrink-0"/>}
-              {isFallback ? 'Completed with Fallback' : 'Completed Successfully'}
-            </div>
-          </div>
-        </div>
-
-        {message && (
-             <div className={cn(
-                 "p-3 sm:p-4 rounded-lg mb-5 sm:mb-6 text-sm border",
-                 isFallback ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-blue-50 border-blue-200 text-blue-800'
-                )}>
-              <div className="flex items-start">
-                <Info className="w-5 h-5 mr-2 sm:mr-3 mt-0.5 flex-shrink-0"/>
-                <div>
-                  <p className="font-medium">Analysis Note</p>
-                  <p className="mt-1 text-xs sm:text-sm">{message}</p>
-                  {errorDetails && errorDetails !== "No specific error details available." && (
-                    <details className="mt-2">
-                      <summary className="text-xs cursor-pointer font-medium">View technical details</summary>
-                      <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-x-auto">{errorDetails}</pre>
-                    </details>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-        <div className="border-t pt-5 sm:pt-6 mt-5 sm:mt-6">
-          <h3 className="text-base sm:text-md font-medium mb-3 sm:mb-4">Personalized Recommendations</h3>
-          
-          {recommendations ? (
-            <div className="space-y-4 sm:space-y-5">
-              {renderRecommendationCard(recommendations.concernAnalysis)}
-              {renderRecommendationCard(recommendations.potentialSolutions)}
-              {renderRecommendationCard(recommendations.nextSteps, 'primary')}
-            </div>
-          ) : (
-            <div className="p-3 sm:p-4 border rounded-lg text-muted-foreground flex items-center gap-2 text-sm">
-                <AlertCircle className="w-4 h-4"/> Could not load recommendations data.
-            </div>
-          )}
-        </div>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 sm:mb-16">
-        <Button variant="outline" asChild size="lg">
-          <Link href="/upload">Start New Analysis</Link>
-        </Button>
+      <div className="flex justify-center mb-6 border-b border-gray-100">
+        <button 
+          onClick={() => setSelectedTab('analysis')}
+          className={cn(
+            "px-4 py-3 font-medium text-sm transition-colors relative",
+            selectedTab === 'analysis' 
+              ? "text-maroon" 
+              : "text-gray-500 hover:text-gray-800"
+          )}
+        >
+          Skin Analysis
+          {selectedTab === 'analysis' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></span>
+          )}
+        </button>
+        <button 
+          onClick={() => setSelectedTab('recommendations')}
+          className={cn(
+            "px-4 py-3 font-medium text-sm transition-colors relative",
+            selectedTab === 'recommendations' 
+              ? "text-maroon" 
+              : "text-gray-500 hover:text-gray-800"
+          )}
+        >
+          Treatments
+          {selectedTab === 'recommendations' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></span>
+          )}
+        </button>
+        <button 
+          onClick={() => setSelectedTab('trending')}
+          className={cn(
+            "px-4 py-3 font-medium text-sm transition-colors relative",
+            selectedTab === 'trending' 
+              ? "text-maroon" 
+              : "text-gray-500 hover:text-gray-800"
+          )}
+        >
+          Skincare Products
+          {selectedTab === 'trending' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></span>
+          )}
+        </button>
       </div>
+      
+      <div className="bg-white rounded-2xl shadow-soft-lg overflow-hidden">
+        {selectedTab === 'analysis' && (
+          <div className="p-6 sm:p-8">
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <span className="w-8 h-8 rounded-full bg-maroon/10 text-maroon flex items-center justify-center mr-2">
+                  <Check className="w-4 h-4" />
+                </span>
+                Your Skin Concerns
+              </h2>
+              <ul className="list-disc list-inside space-y-2 text-gray-600 mb-6 pl-1">
+                {skinConcerns.length > 0 ? (
+                  skinConcerns.map((concern, index) => (
+                    <li key={index} className="text-sm">{concern}</li>
+                  ))
+                ) : (
+                  <li className="text-sm italic">No specific concerns identified from the analysis.</li>
+                )}
+              </ul>
+            </div>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Expert Summary</h3>
+              <div className="bg-maroon/5 rounded-lg p-4">
+                <p className="text-sm text-gray-700 italic">
+                  {recommendations?.concernAnalysis?.analysisSummary || 
+                    "Our experts recommend booking a consultation for a personalized assessment and treatment plan based on your unique skin needs."} 
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-center mt-8">
+              <Button 
+                variant="gradient" 
+                size="lg" 
+                className="w-full sm:w-auto" 
+                onClick={() => setSelectedTab('recommendations')}
+              >
+                View Treatment Recommendations
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {selectedTab === 'recommendations' && (
+          <div className="p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Recommended Treatments</h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+              {treatmentRecommendations.map((item, index) => {
+                const videoSrc = serviceToVideoMap[item.service];
+                return (
+                  <div key={index} className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold text-gray-800 flex-1 mr-2">{item.service}</h3>
+                      {videoSrc && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-maroon/70 hover:text-maroon hover:bg-maroon/10 flex-shrink-0"
+                          onClick={() => setModalVideoSrc(videoSrc)}
+                          aria-label={`Play video for ${item.service}`}
+                        >
+                          <PlayCircle className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm">{item.benefit}</p>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="bg-maroon/5 rounded-xl p-6 mb-6">
+              <h3 className="font-semibold text-gray-800 mb-2">Next Steps</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {recommendations?.nextSteps?.description || 
+                  "For a comprehensive assessment and personalized treatment plan, we recommend booking a consultation at Dr. Bashar Clinic."}
+              </p>
+              <Link href="#">
+                <Button variant="gradient" size="lg" className="w-full">
+                  Book Consultation
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+        
+        {selectedTab === 'trending' && (
+          <div className="p-6 sm:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800">{recommendations?.recommendedProducts?.title || 'Recommended Products'}</h2>
+              {/* Optional: Keep or remove the 'Top Rated' badge */}
+              {/* <div className="flex items-center text-maroon text-sm font-medium">
+                <TrendingUp className="w-4 h-4 mr-1" />
+                Top Rated
+              </div> */}
+            </div>
+            
+            {productRecommendations.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {productRecommendations.map((product, index) => {
+                  // Simplified image source lookup - Use map entry directly or default
+                  const imageUrl = productTypeToImageMap[product.type] || productTypeToImageMap["default"];
+                  return (
+                    <Card key={index} className="overflow-hidden text-center p-4 bg-gray-50/50 border border-gray-100 group">
+                      <div 
+                        className="relative aspect-square w-full mb-3 overflow-hidden rounded-md cursor-pointer" 
+                        onClick={() => {
+                          console.log(`Product card clicked: ${product.type}`); // Keep log for debugging
+                          openImageModal(product.type)
+                        }}
+                        role="button" // Added for accessibility/event handling
+                        tabIndex={0}  // Added for accessibility/event handling
+                        onKeyDown={(e) => e.key === 'Enter' && openImageModal(product.type)} // Allow keyboard activation
+                      >
+                        <Image 
+                          src={imageUrl} // Use the directly looked-up URL
+                          alt={product.type} 
+                          fill 
+                          className="object-cover" 
+                          sizes="(max-width: 640px) 50vw, 33vw" // Optimize image loading
+                          onError={(e) => { 
+                            console.warn(`Failed to load image: ${imageUrl}`);
+                            // Use the explicit default path on error
+                            (e.target as HTMLImageElement).src = productTypeToImageMap["default"]; 
+                          }}
+                        />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-800 mb-1">{product.type}</h3>
+                      <p className="text-gray-600 text-xs">{product.benefit}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 italic">No specific products recommended based on this analysis.</p>
+            )}
+            
+            <div className="text-center">
+              <Link href="#"> 
+                <Button variant="outline" className="border-maroon/20 text-maroon hover:bg-maroon/5">
+                  View All Products
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div className="mt-10 text-center">
+        <Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-maroon transition-colors">
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Home
+        </Link>
+      </div>
+
+      {/* Video Modal (Restored) */} 
+      {modalVideoSrc && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setModalVideoSrc(null)} 
+        >
+          <div 
+            className="relative bg-black rounded-lg overflow-hidden shadow-2xl w-full max-w-2xl max-h-[80vh] aspect-video"
+            onClick={(e) => e.stopPropagation()} 
+          >
+            <Button 
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/75"
+              onClick={() => setModalVideoSrc(null)}
+              aria-label="Close video"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <video
+              key={modalVideoSrc} 
+              src={modalVideoSrc}
+              className="w-full h-full object-contain"
+              controls
+              autoPlay
+              playsInline
+              loop
+              onError={(e) => {
+                console.error('Modal video error:', e);
+                setModalVideoSrc(null);
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {imageModalOpen && selectedImageUrl && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" 
+          onClick={closeImageModal} // Close on overlay click
+        >
+          <div 
+            className="relative bg-white p-2 rounded-lg shadow-xl max-w-xl w-auto max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal content
+          >
+             <button 
+              onClick={closeImageModal} 
+              className="absolute top-1 right-1 text-white bg-black/50 rounded-full p-1 z-10 hover:bg-black/70"
+              aria-label="Close image"
+            >
+              <X size={18} />
+            </button>
+            <Image 
+              src={selectedImageUrl} 
+              alt="Enlarged product" 
+              width={800} // Provide appropriate width/height or use fill/object-contain
+              height={800}
+              className="object-contain w-full h-auto max-h-[calc(85vh-1rem)]" // Adjust max height based on padding
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
