@@ -55,6 +55,8 @@ const serviceToVideoMap: { [key: string]: string } = {
   "under eye treatment": "/videos/treatments/under-eye-treatment.mp4",
   "acne treatment": "/videos/treatments/acne-treatment.mp4", 
   "acne treatment program": "/videos/treatments/acne-treatment.mp4", // Maps to same video
+  "hydrating facial": "/videos/treatments/hydrating-facial.mp4", // Added mapping
+  "microneedling": "/videos/treatments/microneedling.mp4", // Ensure this exists
   // Add other known variations if necessary, ensuring keys are lowercase
   // Add other mappings as needed based on actual service names returned by API
   // Examples from fallback (might not have videos):
