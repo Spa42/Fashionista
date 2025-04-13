@@ -175,10 +175,8 @@ export function ConclusionClient() {
     }
   }, [router]);
 
-  const openImageModal = (productType: string) => {
-    console.log("Opening image modal for type:", productType);
-    const imageUrl = productTypeToImageMap[productType] || '/images/products/placeholder.jpg'; // Use placeholder if no map entry
-    console.log("Resolved image URL:", imageUrl);
+  const openImageModal = (imageUrl: string) => {
+    console.log("Opening image modal for URL:", imageUrl);
     setSelectedImageUrl(imageUrl);
     setImageModalOpen(true);
   };
@@ -331,9 +329,34 @@ export function ConclusionClient() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {treatmentRecommendations.map((item, index) => {
                 const serviceNameLower = item.service.toLowerCase();
-                const videoSrc = serviceToVideoMap[serviceNameLower];
-                console.log(`Service: "${item.service}" (Lower: "${serviceNameLower}"), Video found: ${videoSrc || 'None'}`); // Log mapping attempt
-                
+                // Enhanced case-insensitive lookup with keyword fallback
+                const mapKeys = Object.keys(serviceToVideoMap);
+                let videoSrc: string | undefined = undefined;
+                let matchReason: string = "No match";
+
+                // 1. Try exact case-insensitive match
+                const exactMatchingKey = mapKeys.find(key => key.toLowerCase() === serviceNameLower);
+                if (exactMatchingKey) {
+                  videoSrc = serviceToVideoMap[exactMatchingKey];
+                  matchReason = `Exact match on key: "${exactMatchingKey}"`;
+                } else {
+                  // 2. If no exact match, check for keyword 'laser'
+                  if (serviceNameLower.includes("laser")) {
+                    // Prefer specific laser key if available, otherwise use default laser video path
+                    const specificLaserKey = mapKeys.find(key => key.toLowerCase() === "laser skin resurfacing");
+                    if (specificLaserKey) {
+                        videoSrc = serviceToVideoMap[specificLaserKey];
+                        matchReason = `Keyword match "laser", using specific key: "${specificLaserKey}"`;
+                    } else {
+                        videoSrc = "/videos/treatments/laser-skin-resurfacing.mp4"; // Default laser video path
+                        matchReason = `Keyword match "laser", using default laser video`;
+                    }
+                  }
+                  // Add more keyword checks here if needed (e.g., 'peel', 'acne')
+                }
+
+                console.log(`Service: "${item.service}" (Lower: "${serviceNameLower}"), Match Reason: ${matchReason}, Video found: ${videoSrc || 'None'}`);
+
                 return (
                   <div key={index} className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                     <div className="flex items-start justify-between mb-2">
@@ -385,22 +408,49 @@ export function ConclusionClient() {
             {productRecommendations.length > 0 ? (
               <div className="grid grid-cols-2 gap-4">
                 {productRecommendations.map((product, index) => {
-                  // Simplified image source lookup - Use map entry directly or default
-                  const imageUrl = productTypeToImageMap[product.type] || productTypeToImageMap["default"];
+                  // Enhanced case-insensitive image source lookup with keyword fallback
+                  const productTypeLower = product.type.toLowerCase();
+                  const mapKeys = Object.keys(productTypeToImageMap);
+                  let imageUrl: string | undefined = undefined;
+                  let matchReason: string = "No match";
+
+                  // 1. Try exact case-insensitive match
+                  const exactMatchingKey = mapKeys.find(key => key.toLowerCase() === productTypeLower);
+                  if (exactMatchingKey) {
+                    imageUrl = productTypeToImageMap[exactMatchingKey];
+                    matchReason = `Exact match on key: "${exactMatchingKey}"`;
+                  } else {
+                    // 2. If no exact match, check for keyword 'sunscreen' or 'spf'
+                    if (productTypeLower.includes("sunscreen") || productTypeLower.includes("spf")) {
+                       // Use the specific sunscreen image path
+                       imageUrl = "/images/products/suscreen.png"; 
+                       matchReason = `Keyword match "sunscreen" or "spf"`;
+                    }
+                    // Add more keyword checks here if needed 
+                  }
+
+                  // 3. Fallback to default image if still no match
+                  if (!imageUrl) {
+                      imageUrl = productTypeToImageMap["default"];
+                      matchReason = "Fallback to default";
+                  }
+                  
+                  console.log(`Product: "${product.type}", Match Reason: ${matchReason}, Image URL: ${imageUrl}`);
+
                   return (
                     <Card key={index} className="overflow-hidden text-center p-4 bg-gray-50/50 border border-gray-100 group">
                       <div 
                         className="relative aspect-square w-full mb-3 overflow-hidden rounded-md cursor-pointer" 
                         onClick={() => {
-                          console.log(`Product card clicked: ${product.type}`); // Keep log for debugging
-                          openImageModal(product.type)
+                          console.log(`Product card clicked: Type=${product.type}, Resolved URL=${imageUrl}`); 
+                          openImageModal(imageUrl) // Pass the resolved imageUrl
                         }}
-                        role="button" // Added for accessibility/event handling
-                        tabIndex={0}  // Added for accessibility/event handling
-                        onKeyDown={(e) => e.key === 'Enter' && openImageModal(product.type)} // Allow keyboard activation
+                        role="button" 
+                        tabIndex={0}  
+                        onKeyDown={(e) => e.key === 'Enter' && openImageModal(imageUrl)} 
                       >
                         <Image 
-                          src={imageUrl} // Use the directly looked-up URL
+                          src={imageUrl} // Use the resolved URL
                           alt={product.type} 
                           fill 
                           className="object-cover" 
