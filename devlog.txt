@@ -900,3 +900,8 @@ This log tracks significant changes and milestones in the project.
 [2025-07-30 15:15:00] - FIX - app/conclusion/conclusion-client.tsx - Made video map lookup case-insensitive and added logging.
 [2025-07-30 15:30:00] - UPDATE - app/conclusion/conclusion-client.tsx - Updated serviceToVideoMap with new/corrected video paths.
 [2025-07-30 15:45:00] - FIX - app/conclusion/conclusion-client.tsx - Corrected sunscreen image filename typo in productTypeToImageMap.
+
+[2025-07-30 16:00:00] - REFACTOR - app/api/analyze/route.ts - Updated system prompt to request more detailed, specific analysis (mentioning locations), acknowledge all concerns, and include optional witty/sarcastic comments for facial hair. Updated fallback response.
+[2025-07-30 16:10:00] - FEATURE - app/api/analyze/route.ts - Modified API to accept an `llmChoice` parameter ('openai' or 'gemini') to select the AI model. Implemented logic to prioritize the chosen LLM and updated response messages to use "Dr. Reem (OpenAI)" and "Dr. Bashar (Gemini)".
+[2025-07-30 16:15:00] - ADD - components/ui - Added Select and Label components using shadcn CLI.
+[2025-07-30 16:20:00] - FEATURE - app/upload/upload-form.tsx - Added a Select dropdown UI element allowing users to choose between "Dr. Reem (OpenAI)" and "Dr. Bashar (Gemini)" for the analysis. Passed the selected `llmChoice` to the API request.

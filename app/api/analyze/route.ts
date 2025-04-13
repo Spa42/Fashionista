@@ -40,7 +40,7 @@ const fallbackResponse = {
     title: "AI Analysis Unavailable",
     description: "Could not connect to AI analysis services. Please ensure API keys are configured correctly. Based on common concerns, we recommend a consultation to discuss options like hydration treatments or gentle exfoliation.",
     concerns: ["Hydration Levels", "Skin Texture"],
-    analysisSummary: "While the AI analysis couldn't run, common skin goals include improving hydration and texture. A consultation can provide a personalized path forward!"
+    analysisSummary: "While the AI analysis couldn't run, common skin goals include improving hydration and texture. A consultation can provide a personalized path forward! If facial hair is a concern, we can discuss management options too."
   },
   potentialSolutions: {
     title: "General Recommendations",
@@ -54,7 +54,9 @@ const fallbackResponse = {
     products: [
       { type: "Gentle Cleanser", benefit: "Removes impurities without stripping natural oils." },
       { type: "Hydrating Moisturizer", benefit: "Helps maintain the skin's moisture barrier." },
-      { type: "Broad-Spectrum Sunscreen", benefit: "Protects skin from harmful UV rays." }
+      { type: "Broad-Spectrum Sunscreen", benefit: "Protects skin from harmful UV rays." },
+      // Optional fallback fun item
+      // { type: "Precision Trimmer", benefit: "For keeping things neat." } 
     ]
   },
   nextSteps: {
@@ -64,20 +66,24 @@ const fallbackResponse = {
 };
 
 // Updated system prompt with new JSON structure for solutions, concerns list, and product types
-const systemPrompt = `You are an expert AI skin consultant for "Khalid's Retreat", a high-end clinic offering Plastic Surgery, Dermatology, Aesthetic Procedures, Laser Treatments, and Hair Transplants.
+// Enhanced instructions for detail, tone, and acknowledging all concerns.
+const systemPrompt = `You are an expert AI skin consultant for "Khalid's Retreat", a high-end clinic offering Plastic Surgery, Dermatology, Aesthetic Procedures, Laser Treatments, and Hair Transplants. Your persona should be professional, empathetic, knowledgeable, and slightly witty like a trusted clinic expert.
 Your goal is to analyze the user's provided skin concerns (text description) and/or facial photos (if provided) to identify potential issues and recommend relevant services offered ONLY by Khalid's Retreat and suitable product types.
-Prioritize analysis based on the provided inputs. If only text is given, focus on that. If only images are given, focus on visual analysis. If both are present, integrate the information.
+Prioritize analysis based on the provided inputs. If only text is given, focus on that. If only images are given, focus on visual analysis (e.g., mention "bags under the eyes", specify location of dryness like "around the nose", or uneven tone "on the forehead"). If both are present, integrate the information for a comprehensive analysis.
 Be empathetic, professional, and focus on guiding the user towards a consultation at the clinic for definitive diagnosis and treatment plans.
+
 Structure your response strictly as a JSON object with the following keys:
-1. "concernAnalysis": { "title": "Your Skin Concerns Analysis", "description": "A brief, empathetic analysis summary (1-2 sentences).", "concerns": ["Key Concern 1", "Key Concern 2"], "analysisSummary": "An optimistic, concise summary (2-3 sentences) acknowledging the user's concerns (based on photos/description) and positively framing how they can be addressed through clinic solutions and recommended product types." } - Identify 2-4 specific key concerns, list them, AND provide the optimistic summary here.
-2. "potentialSolutions": { "title": "Potential Clinic Solutions", "solutions": [ { "service": "Relevant Service Name 1", "benefit": "Brief benefit (1 sentence)" }, { "service": "Relevant Service Name 2", "benefit": "Brief benefit (1 sentence)" } ] } - Provide an array of 2-4 relevant services/treatments *specifically offered by Khalid's Retreat*. List the specific service and its primary benefit concisely.
-3. "recommendedProducts": { "title": "Recommended Product Types", "products": [ { "type": "Product Type 1", "benefit": "Why it helps with identified concerns (1 sentence)" }, { "type": "Product Type 2", "benefit": "Why it helps (1 sentence)" } ] } - Suggest 2-4 product *types* relevant to the identified concerns. Briefly explain the benefit for the user's specific situation. **Crucially, this list MUST ALWAYS include a suitable moisturizer type (e.g., 'Hydrating Moisturizer') and a suitable sunscreen type (e.g., 'Broad-Spectrum Sunscreen', 'SPF 30 Sunscreen', 'SPF 50 Sunscreen')** as these are essential for our Middle Eastern clientele due to the dry climate and strong sun. Tailor the benefit description for these two based on the user's other concerns if possible, otherwise provide a general benefit. **Additionally, if the analysis suggests clogged pores, oiliness, or acne, strongly consider including a relevant cleanser type (e.g., 'Gentle Cleanser', 'Foaming Cleanser').**
-4. "nextSteps": { "title": "Next Steps", "description": "Advise the user to book a consultation at Khalid's Retreat for a more accurate diagnosis and personalized treatment plan." }
+1. "concernAnalysis": { "title": "Your Skin Concerns Analysis", "description": "A brief, empathetic analysis summary (1-2 sentences).", "concerns": ["Key Concern 1", "Key Concern 2", "Key Concern 3"], "analysisSummary": "A detailed, optimistic, and slightly witty expert summary (3-5 sentences). MUST acknowledge ALL identified concerns (including things like facial hair, if mentioned/seen). Be specific about locations if possible (e.g., 'dryness around the mouth', 'uneven tone on cheeks'). For facial hair concerns, you *can* add a lighthearted comment like '...and maybe consider tidying up the facial hair while you're focusing on skin!'." } - Identify 2-4 specific key concerns based on input, list them, AND provide the detailed, specific, and acknowledging summary here.
+2. "potentialSolutions": { "title": "Potential Clinic Solutions", "solutions": [ { "service": "Relevant Service Name 1", "benefit": "Brief benefit (1 sentence)" }, { "service": "Relevant Service Name 2", "benefit": "Brief benefit (1 sentence)" } ] } - Provide an array of 2-4 relevant services/treatments *specifically offered by Khalid's Retreat*. List the specific service and its primary benefit concisely. Focus on clinic procedures.
+3. "recommendedProducts": { "title": "Recommended Product Types", "products": [ { "type": "Product Type 1", "benefit": "Why it helps with identified concerns (1 sentence)" }, { "type": "Product Type 2", "benefit": "Why it helps (1 sentence)" } ] } - Suggest 2-4 product *types* relevant to the identified concerns. Briefly explain the benefit for the user's specific situation. **Crucially, this list MUST ALWAYS include a suitable moisturizer type (e.g., 'Hydrating Moisturizer') and a suitable sunscreen type (e.g., 'Broad-Spectrum Sunscreen SPF 50').** Tailor the benefit description for these two based on the user's other concerns if possible, otherwise provide a general benefit (mentioning Middle Eastern climate/sun is good). **Additionally, if the analysis suggests clogged pores, oiliness, or acne, strongly consider including a relevant cleanser type.** If facial hair management was a concern, you *can* optionally add a relevant 'fun' product type like 'Precision Trimmer' or 'Facial Scissors' with a witty benefit like 'For keeping things neat.' or 'For the finer details.'.
+4. "nextSteps": { "title": "Next Steps", "description": "Advise the user to book a consultation at Khalid's Retreat for a more accurate diagnosis and personalized treatment plan. Emphasize the value of an in-person assessment." }
+
 Ensure the output is ONLY the JSON object, without any introductory text or markdown formatting.`;
 
 
 export async function POST(request: Request) {
-  const { description, images: base64Images } = await request.json() as { description?: string; images?: string[] };
+  // Added llmChoice to destructuring
+  const { description, images: base64Images, llmChoice } = await request.json() as { description?: string; images?: string[]; llmChoice?: 'openai' | 'gemini' };
 
   const hasDescription = typeof description === 'string' && description.trim().length > 0;
   const hasImages = Array.isArray(base64Images) && base64Images.length > 0;
@@ -90,22 +96,21 @@ export async function POST(request: Request) {
   let errorDetails: string | null = null;
   let attemptedOpenAI = false;
   let attemptedGemini = false;
+  let preferredLLM = llmChoice || 'openai'; // Default to OpenAI if not specified
 
-  // --- Attempt OpenAI First ---
-  if (openai) {
+  // --- Attempt Analysis ---
+  // Function to perform OpenAI analysis
+  const tryOpenAI = async () => {
+    if (!openai) return false;
     attemptedOpenAI = true;
     try {
-      console.log("Attempting OpenAI analysis...");
-      // Construct messages for OpenAI API
+      console.log("Attempting OpenAI (Dr. Reem) analysis...");
       const openAIMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: [] }, // Content is complex type, will be populated below
+        { role: "user", content: [] },
       ];
-
       const userContentParts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
-      if (hasDescription) {
-        userContentParts.push({ type: "text", text: `Skin Concerns Description: ${description}` });
-      }
+      if (hasDescription) userContentParts.push({ type: "text", text: `Skin Concerns Description: ${description}` });
       if (hasImages) {
         userContentParts.push({ type: "text", text: `User Photos (${base64Images.length} provided): Please analyze the following facial photo(s):` });
         base64Images.forEach((base64Image) => {
@@ -113,182 +118,178 @@ export async function POST(request: Request) {
           userContentParts.push({ type: "image_url", image_url: { url: imageUrl, detail: "low" } });
         });
       }
-      if (userContentParts.length === 0) {
-        userContentParts.push({ type: "text", text: "No specific concerns or photos were provided." });
-      }
+      if (userContentParts.length === 0) userContentParts.push({ type: "text", text: "No specific concerns or photos were provided." });
       openAIMessages[1].content = userContentParts;
 
-
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini", // Keep mini for now, can be changed
         messages: openAIMessages,
         response_format: { type: "json_object" },
         temperature: 0.5,
-        max_tokens: 500,
+        max_tokens: 600, // Slightly increase max tokens for potentially more detailed summary
       });
 
-      console.log("Received OpenAI response.");
+      console.log("Received OpenAI (Dr. Reem) response.");
       const choice = completion.choices[0];
       const content = choice.message?.content;
 
       if (!content) {
-        // Log the entire completion object if content is missing
         console.error("OpenAI response content is empty. Full completion object:", JSON.stringify(completion, null, 2));
-        // Throw error with finish reason if available
         throw new Error(`Empty response from OpenAI. Finish reason: ${choice.finish_reason || 'unknown'}`);
       }
 
       analysisResult = JSON.parse(content);
-      // Validation updated to remove videoFilename check
-      if (!analysisResult.concernAnalysis?.description || 
-          !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
-          analysisResult.concernAnalysis.concerns.length === 0 || 
+      // Add more robust validation if necessary, especially for new detailed fields if explicitly required
+      if (!analysisResult.concernAnalysis?.description ||
+          !Array.isArray(analysisResult.concernAnalysis?.concerns) || // No empty check here, concerns might be []
           !analysisResult.concernAnalysis?.analysisSummary ||
-          !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
-          analysisResult.potentialSolutions.solutions.length === 0 || 
-          // Check each solution only for service and benefit
-          !analysisResult.potentialSolutions.solutions.every((sol: any) => 
-              typeof sol.service === 'string' && 
-              typeof sol.benefit === 'string'
-          ) ||
+          !Array.isArray(analysisResult.potentialSolutions?.solutions) || // No empty check
+          !analysisResult.potentialSolutions.solutions.every((sol: any) => typeof sol.service === 'string' && typeof sol.benefit === 'string') ||
           !analysisResult.recommendedProducts?.title ||
-          !Array.isArray(analysisResult.recommendedProducts?.products) ||
-          analysisResult.recommendedProducts.products.length === 0 ||
-          !analysisResult.recommendedProducts.products.every((prod: any) =>
-              typeof prod.type === 'string' && typeof prod.benefit === 'string'
-          ) ||
+          !Array.isArray(analysisResult.recommendedProducts?.products) || // No empty check
+          !analysisResult.recommendedProducts.products.every((prod: any) => typeof prod.type === 'string' && typeof prod.benefit === 'string') ||
           !analysisResult.nextSteps?.title) {
-         console.error("OpenAI Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
+         console.error("OpenAI Parsed response missing required keys/subkeys or invalid structure:", analysisResult);
          throw new Error("OpenAI response did not follow the required format.");
       }
-      console.log("OpenAI analysis successful.");
+      console.log("OpenAI (Dr. Reem) analysis successful.");
+      errorDetails = null; // Clear previous errors
+      return true; // Success
 
     } catch (error: any) {
       console.error("Error calling OpenAI API:", error.message);
-      errorDetails = `OpenAI Error: ${error.message}`;
-      analysisResult = null; // Ensure result is null if OpenAI fails
-    }
-  }
-
-  // --- Attempt Gemini if OpenAI failed or wasn't available ---
-  if (!analysisResult && geminiModel) {
-    attemptedGemini = true;
-    try {
-      console.log("Attempting Gemini analysis...");
-
-      // Construct Gemini request parts
-      const geminiPromptParts: Part[] = [
-        { text: systemPrompt }, // System instructions first
-        // User input comes next
-      ];
-
-      if (hasDescription) {
-        geminiPromptParts.push({ text: `Skin Concerns Description: ${description}` });
-      }
-      if (hasImages) {
-        geminiPromptParts.push({ text: `User Photos (${base64Images.length} provided): Please analyze the following facial photo(s):` });
-        for (const base64Image of base64Images) {
-          const mimeTypeMatch = base64Image.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
-          if (!mimeTypeMatch) {
-              console.warn("Skipping image due to invalid base64 prefix or unsupported type:", base64Image.substring(0, 30));
-              continue; // Skip if format is not recognized/supported
-          }
-          const mimeType = mimeTypeMatch[1];
-          const pureBase64 = base64Image.substring(mimeTypeMatch[0].length);
-          geminiPromptParts.push({
-            inlineData: {
-              mimeType: mimeType,
-              data: pureBase64,
-            },
-          });
-        }
-      }
-       if (!hasDescription && !hasImages) { // Fallback text if somehow both are missing
-           geminiPromptParts.push({ text: "No specific concerns or photos were provided." });
-       }
-
-
-      const generationConfig = {
-        temperature: 0.5,
-        maxOutputTokens: 500,
-        // Ensure response is JSON - Gemini specific approach
-         responseMimeType: "application/json",
-      };
-
-      const safetySettings = [
-          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ];
-
-
-      const result = await geminiModel.generateContent({
-           contents: [{ role: "user", parts: geminiPromptParts }],
-           generationConfig,
-           safetySettings,
-      });
-
-
-      console.log("Received Gemini response.");
-      const response = result.response;
-      const responseText = response.text();
-
-      if (!responseText) {
-          throw new Error("Empty response from Gemini.");
-      }
-
-      analysisResult = JSON.parse(responseText);
-       // Validation updated to remove videoFilename check
-       if (!analysisResult.concernAnalysis?.description || 
-           !Array.isArray(analysisResult.concernAnalysis?.concerns) || 
-           analysisResult.concernAnalysis.concerns.length === 0 ||
-           !analysisResult.concernAnalysis?.analysisSummary ||
-           !Array.isArray(analysisResult.potentialSolutions?.solutions) || 
-           analysisResult.potentialSolutions.solutions.length === 0 || 
-           // Check each solution only for service and benefit
-           !analysisResult.potentialSolutions.solutions.every((sol: any) => 
-              typeof sol.service === 'string' && 
-              typeof sol.benefit === 'string'
-            ) ||
-           !analysisResult.recommendedProducts?.title ||
-           !Array.isArray(analysisResult.recommendedProducts?.products) ||
-           analysisResult.recommendedProducts.products.length === 0 ||
-           !analysisResult.recommendedProducts.products.every((prod: any) =>
-              typeof prod.type === 'string' && typeof prod.benefit === 'string'
-           ) ||
-           !analysisResult.nextSteps?.title) {
-           console.error("Gemini Parsed response missing required keys/subkeys, empty arrays, or invalid solution structure:", analysisResult);
-           throw new Error("Gemini response did not follow the required format.");
-       }
-       console.log("Gemini analysis successful.");
-       errorDetails = null; // Clear previous OpenAI error if Gemini succeeded
-
-    } catch (error: any) {
-      console.error("Error calling Gemini API:", error.message);
-      // Append Gemini error details if OpenAI also failed
-      errorDetails = errorDetails ? `${errorDetails}; Gemini Error: ${error.message}` : `Gemini Error: ${error.message}`;
+      errorDetails = `Dr. Reem (OpenAI) Error: ${error.message}`;
       analysisResult = null;
+      return false; // Failure
+    }
+  };
+
+  // Function to perform Gemini analysis
+  const tryGemini = async () => {
+     if (!geminiModel) return false;
+     attemptedGemini = true;
+     try {
+       console.log("Attempting Gemini (Dr. Bashar) analysis...");
+       const geminiPromptParts: Part[] = [{ text: systemPrompt }];
+       if (hasDescription) geminiPromptParts.push({ text: `Skin Concerns Description: ${description}` });
+       if (hasImages) {
+         geminiPromptParts.push({ text: `User Photos (${base64Images.length} provided): Please analyze the following facial photo(s):` });
+         for (const base64Image of base64Images) {
+           const mimeTypeMatch = base64Image.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
+           if (!mimeTypeMatch) {
+             console.warn("Skipping image due to invalid base64 prefix or unsupported type:", base64Image.substring(0, 30));
+             continue;
+           }
+           const mimeType = mimeTypeMatch[1];
+           const pureBase64 = base64Image.substring(mimeTypeMatch[0].length);
+           geminiPromptParts.push({ inlineData: { mimeType: mimeType, data: pureBase64 } });
+         }
+       }
+       if (!hasDescription && !hasImages) geminiPromptParts.push({ text: "No specific concerns or photos were provided." });
+
+       const generationConfig = {
+         temperature: 0.5,
+         maxOutputTokens: 600, // Slightly increase max tokens
+         responseMimeType: "application/json",
+       };
+       const safetySettings = [
+         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+       ];
+
+       const result = await geminiModel.generateContent({
+         contents: [{ role: "user", parts: geminiPromptParts }],
+         generationConfig,
+         safetySettings,
+       });
+
+       console.log("Received Gemini (Dr. Bashar) response.");
+       const response = result.response;
+       const responseText = response.text();
+
+       if (!responseText) throw new Error("Empty response from Gemini.");
+
+       analysisResult = JSON.parse(responseText);
+       // Add more robust validation if necessary
+       if (!analysisResult.concernAnalysis?.description ||
+           !Array.isArray(analysisResult.concernAnalysis?.concerns) || // No empty check
+           !analysisResult.concernAnalysis?.analysisSummary ||
+           !Array.isArray(analysisResult.potentialSolutions?.solutions) || // No empty check
+           !analysisResult.potentialSolutions.solutions.every((sol: any) => typeof sol.service === 'string' && typeof sol.benefit === 'string') ||
+           !analysisResult.recommendedProducts?.title ||
+           !Array.isArray(analysisResult.recommendedProducts?.products) || // No empty check
+           !analysisResult.recommendedProducts.products.every((prod: any) => typeof prod.type === 'string' && typeof prod.benefit === 'string') ||
+           !analysisResult.nextSteps?.title) {
+         console.error("Gemini Parsed response missing required keys/subkeys or invalid structure:", analysisResult);
+         throw new Error("Gemini response did not follow the required format.");
+       }
+       console.log("Gemini (Dr. Bashar) analysis successful.");
+       errorDetails = null; // Clear previous errors
+       return true; // Success
+
+     } catch (error: any) {
+       console.error("Error calling Gemini API:", error.message);
+       const geminiError = `Dr. Bashar (Gemini) Error: ${error.message}`;
+       errorDetails = errorDetails ? `${errorDetails}; ${geminiError}` : geminiError;
+       analysisResult = null;
+       return false; // Failure
+     }
+  };
+
+  // --- Execution Logic ---
+  let success = false;
+  if (preferredLLM === 'openai') {
+    success = await tryOpenAI();
+    if (!success) {
+      success = await tryGemini(); // Fallback to Gemini
+    }
+  } else { // Preferred LLM is 'gemini'
+    success = await tryGemini();
+    if (!success) {
+      success = await tryOpenAI(); // Fallback to OpenAI
     }
   }
 
   // --- Determine Final Response ---
-  if (analysisResult) {
-    // Success from either OpenAI or Gemini
-    return NextResponse.json({ 
-        recommendations: analysisResult, 
-        fallback: false, 
-        message: attemptedGemini && !attemptedOpenAI ? "Analysis completed using Google Gemini." : (attemptedGemini ? "OpenAI failed, analysis completed using Google Gemini." : "Analysis completed using OpenAI."),
+  if (success && analysisResult) {
+    let successMessage = "Analysis successful.";
+    if (attemptedOpenAI && attemptedGemini) {
+      // Indicates a fallback occurred
+      successMessage = preferredLLM === 'openai'
+        ? "Dr. Reem (OpenAI) analysis failed, completed using Dr. Bashar (Gemini)."
+        : "Dr. Bashar (Gemini) analysis failed, completed using Dr. Reem (OpenAI).";
+    } else if (attemptedOpenAI) {
+      successMessage = "Analysis completed using Dr. Reem (OpenAI).";
+    } else if (attemptedGemini) {
+      successMessage = "Analysis completed using Dr. Bashar (Gemini).";
+    }
+
+    return NextResponse.json({
+        recommendations: analysisResult,
+        fallback: false,
+        message: successMessage,
         errorDetails: null // Clear error details on success
     });
   } else {
     // Both failed or neither was configured/available
-    console.error("Both OpenAI and Gemini analysis failed or were unavailable. Returning fallback.");
+    console.error("All attempted AI analyses failed or were unavailable. Returning fallback.");
+    let failMessage = `AI analysis failed.`;
+    if (!openai && !genAI) {
+        failMessage += ' Neither AI client is configured.';
+    } else if (!openai) {
+        failMessage += ' Dr. Reem (OpenAI) client not configured.';
+    } else if (!genAI) {
+        failMessage += ' Dr. Bashar (Gemini) client not configured.';
+    }
+
     return NextResponse.json({
       recommendations: fallbackResponse,
       fallback: true,
-      message: `AI analysis failed.${!openai && !genAI ? ' Neither AI client is configured.' : ''}${openai && !attemptedOpenAI ? ' OpenAI client configured but not attempted?' : ''}${genAI && !attemptedGemini ? ' Gemini client configured but not attempted?' : ''}`,
-      errorDetails: errorDetails || "No specific error details available.",
+      message: failMessage,
+      // Ensure errorDetails includes context about which attempts failed
+      errorDetails: errorDetails || "No specific error details available from attempts.",
     });
   }
 }

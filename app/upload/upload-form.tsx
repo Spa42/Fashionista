@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { ClientPhotoGuide } from './client-photo-guide';
 import { PhotoUploader } from '@/components/upload/photo-uploader';
 import { Spinner } from '@/components/ui/spinner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
 interface UploadFormProps {
   onAnalysisComplete: (result: any) => void;
@@ -15,6 +17,7 @@ interface UploadFormProps {
 
 export function UploadForm({ onAnalysisComplete, onAnalysisError, setIsLoading, isLoading }: UploadFormProps) {
   const [showGuide, setShowGuide] = useState(false);
+  const [selectedLlm, setSelectedLlm] = useState<'openai' | 'gemini'>('openai');
 
   const handleToggleGuide = () => {
     setShowGuide(!showGuide);
@@ -47,7 +50,8 @@ export function UploadForm({ onAnalysisComplete, onAnalysisError, setIsLoading, 
         },
         body: JSON.stringify({
           images: base64Photos,
-          description: description
+          description: description,
+          llmChoice: selectedLlm
         }),
       });
       
@@ -96,6 +100,22 @@ export function UploadForm({ onAnalysisComplete, onAnalysisError, setIsLoading, 
               <ClientPhotoGuide />
             </div>
           )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="llm-select" className="text-sm font-medium text-gray-700">Choose your AI Consultant</Label>
+            <Select value={selectedLlm} onValueChange={(value: 'openai' | 'gemini') => setSelectedLlm(value)}>
+              <SelectTrigger id="llm-select" className="w-full">
+                <SelectValue placeholder="Select your AI Consultant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">Dr. Reem (Faster Analysis)</SelectItem>
+                <SelectItem value="gemini">Dr. Bashar (More Detailed Analysis)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 italic">
+              Selecting a different consultant can provide a second opinion. Dr. Bashar may take slightly longer.
+            </p>
+          </div>
           
           <PhotoUploader 
             onPhotosComplete={handlePhotosComplete}
