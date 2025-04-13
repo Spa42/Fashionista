@@ -359,8 +359,8 @@ export function ConclusionClient() {
 
                 return (
                   <div key={index} className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-gray-800 flex-1 mr-2">{item.service}</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-800 flex-1 mr-2 min-w-0">{item.service}</h3>
                       {videoSrc && ( // Button appears only if videoSrc is found
                         <Button 
                           variant="ghost" 
